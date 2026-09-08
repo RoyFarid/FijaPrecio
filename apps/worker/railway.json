@@ -1,0 +1,29 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacksPlan": {
+      "phases": {
+        "setup": { "nixPkgs": ["nodejs_22", "pnpm-10_x"] },
+        "install": { "cmds": ["pnpm install --frozen-lockfile"] },
+        "build": { "cmds": ["pnpm turbo run build --filter=@fijaprecio/worker..."] }
+      }
+    },
+    "watchPatterns": [
+      "apps/worker/**",
+      "packages/db/**",
+      "packages/config-schema/**",
+      "packages/shared-types/**",
+      "pnpm-lock.yaml",
+      "turbo.json"
+    ]
+  },
+  "deploy": {
+    "startCommand": "node apps/worker/dist/main.js",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 30,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 5,
+    "numReplicas": 1
+  }
+}

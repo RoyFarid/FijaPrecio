@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "NestJS app",
+  "extends": "./base.json",
+  "compilerOptions": {
+    // Hereda module/moduleResolution = NodeNext de base.json.
+    // Los paquetes de apps son CommonJS (sin "type" en package.json):
+    // tsc emite require() y exige extensiones .js explícitas en los imports.
+    "target": "ES2023",
+    "outDir": "dist",
+    "rootDir": "src",
+    "baseUrl": ".",
+    "incremental": true,
+    // El tsbuildinfo va DENTRO de dist para que `nest build` (deleteOutDir) lo
+    // borre junto con el resto; si no, un build incremental tras borrar dist
+    // deja dist vacío.
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "strictPropertyInitialization": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test", "**/*.test.ts"]
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Library (tsc build)",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    // tsbuildinfo DENTRO de dist: se limpia junto con el resto y un `rm -rf dist`
+    // no deja a tsc creyendo que ya emitió.
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}

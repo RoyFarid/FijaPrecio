@@ -1,0 +1,17 @@
+{
+  "name": "@fijaprecio/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "dependencies": {
+    "@eslint/js": "catalog:",
+    "typescript-eslint": "catalog:",
+    "eslint-config-prettier": "^9.1.0"
+  },
+  "peerDependencies": {
+    "eslint": "catalog:"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "globalDependencies": ["tsconfig.base.json", ".env"],
+  "globalEnv": ["NODE_ENV", "CI"],
+  "globalPassThroughEnv": ["RAILWAY_*"],
+  "tasks": {
+    "db:generate": {
+      "inputs": ["prisma/schema.prisma"],
+      "cache": false
+    },
+    "build": {
+      "dependsOn": ["^build", "db:generate"],
+      "inputs": ["src/**", "tsconfig*.json", "nest-cli.json", "next.config.*", "!**/*.test.ts"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": ["NEXT_PUBLIC_*"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build", "db:generate"],
+      "inputs": ["src/**", "tsconfig*.json"]
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", ".eslintrc*", "eslint.config.*"]
+    },
+    "test": {
+      "dependsOn": ["^build", "db:generate"],
+      "inputs": ["src/**", "test/**", "vitest.config.*"],
+      "outputs": ["coverage/**"]
+    },
+    "dev": {
+      "dependsOn": ["^build", "db:generate"],
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

@@ -1,0 +1,1246 @@
+// =============================================================================
+// FijaPrecio — Prisma schema (v1)
+// -----------------------------------------------------------------------------
+// Convenciones:
+//   - IDs: UUID v7 (time-ordered => buena localidad de índice). Requiere Prisma >= 6.1.
+//   - Dinero: Decimal(14,4). Cantidades: Decimal(16,6). Porcentajes: fracción 0..1
+//     en Decimal(6,4) (0.1850 = 18.5%). Tasas de cambio: Decimal(18,8).
+//   - Multi-tenant: toda entidad de negocio referencia `organization`. Las entidades
+//     GLOBALES (catálogo canónico, fuentes de scraping, planes, settings globales,
+//     tasas de cambio) NO tienen organización.
+//   - `region`: código tipo ISO 3166-2. "PE" = nacional, "PE-LIM", "PE-JUN", ...
+//   - `unit`: string libre con vocabulario controlado; las conversiones viven en
+//     UnitConversion. Las unidades válidas se administran vía AppSetting.
+//   - Refs de auditoría / propiedad ("...ById"): son escalares sueltos (sin relación
+//     Prisma) para no convertir a User en un cajón de sastre. Los FK con
+//     ON DELETE SET NULL se agregan en prisma/manual/0001_*.sql.
+//   - Nada de parámetros de negocio aquí: márgenes, IGV, umbrales de outliers,
+//     límites de plan, cadencias => AppSetting / PlanEntitlement / ScrapingSource.
+// =============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  // pgcrypto: gen_random_uuid (fallback) | pg_trgm: similitud de texto
+  // unaccent: normalización de tildes    | citext: emails case-insensitive
+  extensions = [pgcrypto, pg_trgm, unaccent, citext]
+}
+
+// =============================================================================
+// 1. TENANCY & IDENTIDAD
+// =============================================================================
+
+/// Tenant raíz. Cada negocio (MYPE) es una organización.
+model Organization {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  name       String
+  slug       String    @unique
+  country    String    @default("PE") // ISO 3166-1 alpha-2
+  region     String    @default("PE") // ISO 3166-2; default operativo para consenso
+  currency   String    @default("PEN") // ISO 4217
+  locale     String    @default("es-PE")
+  timezone   String    @default("America/Lima")
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  memberships       Membership[]
+  invitations       Invitation[]
+  subscription      Subscription?
+  telegramLinks     TelegramLink[]
+  apiKeys           ApiKey[]
+  products          Product[]
+  orgInputs         OrgInput[]
+  suppliers         Supplier[]
+  supplierUploads   SupplierCatalogUpload[]
+  costingSnapshots  CostingSnapshot[]
+  scenarios         Scenario[]
+  priceObservations PriceObservation[]
+  marketPrices      MarketPrice[]
+  receipts          Receipt[]
+  scrapingJobs      ScrapingJob[]
+  alerts            Alert[]
+  notifications     Notification[]
+  reputationEvents  ReputationEvent[]
+  auditLogs         AuditLog[]
+  appSettings       AppSetting[]
+  marketplaceEvents MarketplaceEvent[]
+
+  @@index([archivedAt])
+}
+
+model User {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  email           String    @unique @db.Citext
+  passwordHash    String? // null => solo magic-link
+  name            String
+  locale          String    @default("es-PE")
+  reputation      Int       @default(0) // denormalizado; recalculado por el worker
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  archivedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  memberships       Membership[]
+  refreshTokens     RefreshToken[]
+  telegramLink      TelegramLink?
+  reputationEvents  ReputationEvent[]
+  notifications     Notification[]
+  priceObservations PriceObservation[] @relation("PriceObservationReporter")
+  receipts          Receipt[]          @relation("ReceiptUploader")
+}
+
+/// Relación usuario <-> organización, con rol. Un usuario puede pertenecer a varias.
+model Membership {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  userId         String           @db.Uuid
+  organizationId String           @db.Uuid
+  role           MembershipRole   @default(MEMBER)
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model Invitation {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  email          String         @db.Citext
+  role           MembershipRole @default(MEMBER)
+  token          String         @unique
+  invitedById    String?        @db.Uuid // ref suelta -> User
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime       @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+}
+
+/// Refresh tokens con rotación. `family` permite detectar reuse (token robado).
+model RefreshToken {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  userId       String    @db.Uuid
+  tokenHash    String    @unique
+  family       String    @db.Uuid
+  replacedById String?   @db.Uuid
+  userAgent    String?
+  ip           String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([family])
+}
+
+/// Vinculación de cuenta con Telegram (para el bot de boletas).
+model TelegramLink {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  userId           String    @unique @db.Uuid
+  organizationId   String    @db.Uuid
+  telegramUserId   BigInt?   @unique
+  telegramUsername String?
+  code             String    @unique // código temporal que el usuario envía al bot
+  codeExpiresAt    DateTime
+  verifiedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+/// API keys para el plan Business (acceso programático).
+model ApiKey {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  name           String
+  keyHash        String    @unique
+  prefix         String // primeros chars visibles: "fp_live_ab12…"
+  scopes         String[]
+  createdById    String?   @db.Uuid // ref suelta -> User
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+// =============================================================================
+// 2. BILLING & PLANES  (data-driven: los límites NO están en el código)
+// =============================================================================
+
+model Plan {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  code        String   @unique // FREE | PREMIUM | BUSINESS (dato, no enum)
+  name        String
+  description String?
+  priceMonth  Decimal? @db.Decimal(14, 4)
+  currency    String   @default("PEN")
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entitlements  PlanEntitlement[]
+  subscriptions Subscription[]
+}
+
+/// Un límite/capacidad por fila. Ej: key="ocr_receipts_per_month" value=5.
+model PlanEntitlement {
+  id     String @id @default(uuid(7)) @db.Uuid
+  planId String @db.Uuid
+  key    String
+  value  Json
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, key])
+}
+
+model Subscription {
+  id               String             @id @default(uuid(7)) @db.Uuid
+  organizationId   String             @unique @db.Uuid
+  planId           String             @db.Uuid
+  status           SubscriptionStatus @default(TRIALING)
+  provider         String? // "culqi" | "mercadopago" | "stripe"
+  providerRef      String? // id de la suscripción en la pasarela
+  trialEndsAt      DateTime?
+  currentPeriodEnd DateTime?
+  cancelAt         DateTime?
+  canceledAt       DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
+
+  @@index([planId])
+}
+
+/// Idempotencia + historial de webhooks de la pasarela de pago.
+model PaymentEvent {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  provider        String
+  providerEventId String
+  type            String
+  organizationId  String?   @db.Uuid // ref suelta
+  payload         Json
+  processedAt     DateTime?
+  error           String?
+  createdAt       DateTime  @default(now())
+
+  @@unique([provider, providerEventId])
+  @@index([organizationId])
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  UNPAID
+  CANCELED
+  INCOMPLETE
+}
+
+// =============================================================================
+// 3. CONFIGURACIÓN  (Nivel 2 del "cero hardcodeo")
+// =============================================================================
+
+/// Clave/valor tipado. scope=GLOBAL (organizationId null) o scope=ORGANIZATION.
+/// Precedencia efectiva: override de org ?? default de plan ?? default global.
+/// La unicidad real se garantiza con índices parciales (ver 0001_*.sql).
+model AppSetting {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  scope          SettingScope
+  organizationId String?      @db.Uuid
+  key            String
+  value          Json
+  updatedById    String?      @db.Uuid // ref suelta -> User
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([scope, organizationId, key]) // reforzado por índices parciales
+  @@index([key])
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  key         String   @unique
+  description String?
+  enabled     Boolean  @default(false)
+  strategy    Json     @default("{}") // { rolloutPct, orgAllowlist, planAllowlist }
+  updatedAt   DateTime @updatedAt
+}
+
+model NotificationTemplate {
+  id        String              @id @default(uuid(7)) @db.Uuid
+  code      String
+  locale    String              @default("es-PE")
+  channel   NotificationChannel
+  subject   String?
+  body      String              @db.Text
+  updatedAt DateTime            @updatedAt
+
+  @@unique([code, locale, channel])
+}
+
+/// Factores de conversión entre unidades (para normalizar scraping / boletas).
+model UnitConversion {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  fromUnit String
+  toUnit   String
+  factor   Decimal @db.Decimal(20, 10) // 1 fromUnit = factor * toUnit
+  category String? // weight | length | volume | count
+  notes    String?
+
+  @@unique([fromUnit, toUnit])
+}
+
+enum SettingScope {
+  GLOBAL
+  ORGANIZATION
+}
+
+// =============================================================================
+// 4. CATÁLOGO E INSUMOS
+// =============================================================================
+
+model InputCategory {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  name      String
+  slug      String   @unique
+  parentId  String?  @db.Uuid
+  rubro     String? // confeccion | gastronomia | muebles | ...
+  createdAt DateTime @default(now())
+
+  parent   InputCategory?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children InputCategory[] @relation("CategoryTree")
+
+  canonicalInputs       CanonicalInput[]
+  marketplacePlacements MarketplacePlacement[]
+
+  @@index([parentId])
+  @@index([rubro])
+}
+
+/// Insumo estandarizado GLOBAL. La base colaborativa gira en torno a esto.
+model CanonicalInput {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  name           String
+  normalizedName String // lowercase + unaccent + sin unidades
+  categoryId     String?              @db.Uuid
+  baseUnit       String // unidad canónica para consenso (ej. "m", "kg")
+  status         CanonicalInputStatus @default(PENDING_REVIEW)
+  mergedIntoId   String?              @db.Uuid // si status=MERGED
+  description    String?
+  attributes     Json                 @default("{}") // { titulo, composicion, calibre, ... }
+  createdById    String?              @db.Uuid // ref suelta -> User
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  category   InputCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  mergedInto CanonicalInput?  @relation("CanonicalMerge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedFrom CanonicalInput[] @relation("CanonicalMerge")
+
+  aliases               CanonicalInputAlias[]
+  orgInputs             OrgInput[]
+  priceObservations     PriceObservation[]
+  priceConsensus        PriceConsensus[]
+  supplierCatalogItems  SupplierCatalogItem[]
+  alerts                Alert[]
+  receiptLineItems      ReceiptLineItem[]
+  marketplacePlacements MarketplacePlacement[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([mergedIntoId])
+  // Índice trigram para autocompletado / fuzzy match (requiere pg_trgm)
+  @@index([normalizedName(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+model CanonicalInputAlias {
+  id               String      @id @default(uuid(7)) @db.Uuid
+  canonicalInputId String      @db.Uuid
+  alias            String
+  normalizedAlias  String
+  weight           Decimal     @default(1) @db.Decimal(5, 4)
+  source           AliasSource @default(USER)
+  createdAt        DateTime    @default(now())
+
+  canonicalInput CanonicalInput @relation(fields: [canonicalInputId], references: [id], onDelete: Cascade)
+
+  @@unique([canonicalInputId, normalizedAlias])
+  @@index([normalizedAlias(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+/// Instancia de insumo dentro de una organización (lo que el usuario "tiene").
+model OrgInput {
+  id                  String    @id @default(uuid(7)) @db.Uuid
+  organizationId      String    @db.Uuid
+  canonicalInputId    String?   @db.Uuid // null mientras no se resuelve el match
+  displayName         String
+  unit                String
+  lastKnownPrice      Decimal?  @db.Decimal(14, 4)
+  currency            String    @default("PEN")
+  preferredSupplierId String?   @db.Uuid
+  notes               String?
+  archivedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  canonicalInput    CanonicalInput? @relation(fields: [canonicalInputId], references: [id], onDelete: SetNull)
+  preferredSupplier Supplier?       @relation(fields: [preferredSupplierId], references: [id], onDelete: SetNull)
+
+  recipeLines RecipeLine[]
+
+  @@unique([organizationId, displayName])
+  @@index([organizationId])
+  @@index([canonicalInputId])
+  @@index([preferredSupplierId])
+}
+
+model Supplier {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String?  @db.Uuid // null => proveedor público / global (B2B alianzas)
+  name           String
+  normalizedName String
+  isPublic       Boolean  @default(false)
+  verified       Boolean  @default(false)
+  contactEmail   String?  @db.Citext
+  contactPhone   String?
+  website        String?
+  regions        String[]
+  createdById    String?  @db.Uuid // ref suelta -> User
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  catalogItems          SupplierCatalogItem[]
+  catalogUploads        SupplierCatalogUpload[]
+  preferredByOrgInputs  OrgInput[]
+  marketplacePlacements MarketplacePlacement[]
+
+  @@index([organizationId])
+  @@index([normalizedName(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+model SupplierCatalogUpload {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  supplierId     String              @db.Uuid
+  organizationId String?             @db.Uuid
+  uploadedById   String?             @db.Uuid // ref suelta -> User
+  storageKey     String // key en R2
+  status         CatalogUploadStatus @default(RECEIVED)
+  rowCount       Int?
+  errorReport    Json?
+  createdAt      DateTime            @default(now())
+  processedAt    DateTime?
+
+  supplier     Supplier              @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  organization Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  items        SupplierCatalogItem[]
+
+  @@index([supplierId])
+  @@index([organizationId])
+}
+
+model SupplierCatalogItem {
+  id               String                @id @default(uuid(7)) @db.Uuid
+  supplierId       String                @db.Uuid
+  canonicalInputId String                @db.Uuid
+  uploadId         String?               @db.Uuid
+  price            Decimal               @db.Decimal(14, 4)
+  currency         String                @default("PEN")
+  unit             String
+  region           String?
+  minOrderQty      Decimal?              @db.Decimal(16, 6)
+  source           SupplierCatalogSource @default(CSV)
+  validFrom        DateTime              @default(now())
+  validTo          DateTime?
+  createdAt        DateTime              @default(now())
+
+  supplier       Supplier               @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  canonicalInput CanonicalInput         @relation(fields: [canonicalInputId], references: [id], onDelete: Cascade)
+  upload         SupplierCatalogUpload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@index([supplierId])
+  @@index([canonicalInputId])
+  @@index([uploadId])
+  @@index([canonicalInputId, validFrom])
+}
+
+enum CanonicalInputStatus {
+  ACTIVE
+  PENDING_REVIEW
+  MERGED
+  REJECTED
+}
+
+enum AliasSource {
+  USER
+  SYSTEM
+  IMPORT
+}
+
+enum SupplierCatalogSource {
+  CSV
+  MANUAL
+  API
+}
+
+enum CatalogUploadStatus {
+  RECEIVED
+  VALIDATING
+  PROCESSED
+  FAILED
+}
+
+// =============================================================================
+// 5. PRODUCTOS & COSTEO
+// =============================================================================
+
+model Product {
+  id              String        @id @default(uuid(7)) @db.Uuid
+  organizationId  String        @db.Uuid
+  name            String
+  slug            String?
+  rubro           String?
+  description     String?
+  targetMarginPct Decimal?      @db.Decimal(6, 4) // meta de margen (fracción)
+  targetPrice     Decimal?      @db.Decimal(14, 4) // precio de mercado objetivo
+  currency        String        @default("PEN")
+  status          ProductStatus @default(DRAFT)
+  createdById     String?       @db.Uuid // ref suelta -> User
+  archivedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  recipes          ProductRecipe[]
+  costingSnapshots CostingSnapshot[]
+  scenarios        Scenario[]
+  marketPrices     MarketPrice[]
+  alerts           Alert[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+/// Ficha técnica versionada. Solo una `isActive` por producto.
+model ProductRecipe {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  productId      String   @db.Uuid
+  version        Int
+  isActive       Boolean  @default(false)
+  notes          String?
+  laborMinutes   Decimal? @db.Decimal(12, 4)
+  outputQuantity Decimal  @default(1) @db.Decimal(16, 6) // unidades que produce el lote
+  outputUnit     String? // "unidad", "kg", "docena", ...
+  createdById    String?  @db.Uuid // ref suelta -> User
+  createdAt      DateTime @default(now())
+
+  product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lines            RecipeLine[]
+  costComponents   CostComponent[]
+  costingSnapshots CostingSnapshot[]
+  baseForScenarios Scenario[]        @relation("ScenarioBaseRecipe")
+  // Un solo recipe activo por producto: índice parcial en 0001_*.sql
+
+  @@unique([productId, version])
+  @@index([productId])
+}
+
+/// Línea del BOM: un insumo dentro de una receta.
+model RecipeLine {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  recipeId         String   @db.Uuid
+  orgInputId       String   @db.Uuid
+  quantity         Decimal  @db.Decimal(16, 6)
+  unit             String
+  wastePct         Decimal  @default(0) @db.Decimal(6, 4) // desperdicio (fracción)
+  unitCostOverride Decimal? @db.Decimal(14, 4) // si el usuario fija el precio a mano
+  sortOrder        Int      @default(0)
+  notes            String?
+
+  recipe   ProductRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  orgInput OrgInput      @relation(fields: [orgInputId], references: [id], onDelete: Restrict)
+
+  @@index([recipeId])
+  @@index([orgInputId])
+}
+
+/// Costos que no son insumos: mano de obra, overhead, empaque, envío, comisiones...
+model CostComponent {
+  id        String            @id @default(uuid(7)) @db.Uuid
+  recipeId  String            @db.Uuid
+  type      CostComponentType
+  label     String
+  calc      CostCalcMethod
+  value     Decimal           @db.Decimal(14, 4)
+  meta      Json              @default("{}")
+  sortOrder Int               @default(0)
+
+  recipe ProductRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+/// Resultado auditable de un cálculo de costeo. Guarda el breakdown Y la config
+/// efectiva usada (igvRate, marginPct, método de overhead) => reproducible.
+model CostingSnapshot {
+  id             String @id @default(uuid(7)) @db.Uuid
+  productId      String @db.Uuid
+  recipeId       String @db.Uuid
+  organizationId String @db.Uuid
+  currency       String @default("PEN")
+
+  totalCost      Decimal  @db.Decimal(14, 4)
+  unitCost       Decimal  @db.Decimal(14, 4)
+  suggestedPrice Decimal? @db.Decimal(14, 4)
+  marginPct      Decimal? @db.Decimal(6, 4)
+
+  // Target costing
+  targetPrice Decimal? @db.Decimal(14, 4)
+  targetCost  Decimal? @db.Decimal(14, 4)
+  costGap     Decimal? @db.Decimal(14, 4) // totalCost - targetCost
+
+  breakdown  Json // detalle por línea y componente
+  configUsed Json // snapshot de la config efectiva (para reproducir el cálculo)
+  inputsHash String // hash de receta+precios+config => detectar staleness
+  computedAt DateTime @default(now())
+
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  recipe       ProductRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([productId, computedAt])
+  @@index([recipeId])
+  @@index([organizationId])
+}
+
+/// Simulador de escenarios: receta base + overrides. Premium: multi-variable.
+model Scenario {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  productId      String   @db.Uuid
+  baseRecipeId   String   @db.Uuid
+  name           String
+  notes          String?
+  createdById    String?  @db.Uuid // ref suelta -> User
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  baseRecipe   ProductRecipe @relation("ScenarioBaseRecipe", fields: [baseRecipeId], references: [id], onDelete: Cascade)
+
+  overrides ScenarioOverride[]
+  results   ScenarioResult[]
+
+  @@index([organizationId])
+  @@index([productId])
+  @@index([baseRecipeId])
+}
+
+model ScenarioOverride {
+  id         String               @id @default(uuid(7)) @db.Uuid
+  scenarioId String               @db.Uuid
+  type       ScenarioOverrideType
+  targetRef  String? // id de recipeLine / costComponent / canonicalInput / supplier
+  patch      Json // { quantity } | { unitPrice } | { marginPct } | { supplierId } ...
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@index([scenarioId])
+}
+
+model ScenarioResult {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  scenarioId     String   @db.Uuid
+  totalCost      Decimal  @db.Decimal(14, 4)
+  unitCost       Decimal  @db.Decimal(14, 4)
+  suggestedPrice Decimal? @db.Decimal(14, 4)
+  marginPct      Decimal? @db.Decimal(6, 4)
+  breakdown      Json
+  computedAt     DateTime @default(now())
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@index([scenarioId, computedAt])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CostComponentType {
+  LABOR
+  OVERHEAD
+  PACKAGING
+  SHIPPING
+  PLATFORM_FEE
+  TAX
+  OTHER
+}
+
+enum CostCalcMethod {
+  FIXED
+  PER_UNIT
+  PER_HOUR
+  PCT_OF_DIRECT_COST
+  PCT_OF_TOTAL_COST
+}
+
+enum ScenarioOverrideType {
+  RECIPE_LINE
+  COST_COMPONENT
+  MARGIN
+  INPUT_PRICE
+  SUPPLIER_SWAP
+}
+
+// =============================================================================
+// 6. INTELIGENCIA DE PRECIOS
+// =============================================================================
+
+/// Observación de precio cruda, multi-fuente. NUNCA se borra: se marca REJECTED.
+model PriceObservation {
+  id               String     @id @default(uuid(7)) @db.Uuid
+  scope            PriceScope
+  canonicalInputId String?    @db.Uuid // cuando scope=INPUT
+  productQuery     String? // cuando scope=FINAL_PRODUCT (texto normalizado)
+  organizationId   String?    @db.Uuid // null para scrape/official
+  reporterUserId   String?    @db.Uuid
+
+  price    Decimal @db.Decimal(14, 4)
+  currency String  @default("PEN")
+  unit     String
+  region   String  @default("PE")
+
+  source             PriceSource
+  // Clave natural de la observación en su fuente. Para fuentes de serie temporal
+  // (SCRAPE/OFFICIAL) DEBE codificar la corrida: "{scrapingJobId}:{itemUrl}" o
+  // "{dataset}:{fecha}:{fila}" => re-scrapear otro día crea una obs nueva, pero
+  // reintentar la MISMA corrida es idempotente. NULL para entradas manuales.
+  sourceRef          String?
+  reporterReputation Int? // snapshot de reputación al momento de aportar
+  weight             Decimal?    @db.Decimal(6, 4) // peso calculado (cache)
+
+  status          PriceObservationStatus @default(ACTIVE)
+  rejectionReason String?
+
+  observedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  canonicalInput  CanonicalInput?  @relation(fields: [canonicalInputId], references: [id], onDelete: Cascade)
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  reporter        User?            @relation("PriceObservationReporter", fields: [reporterUserId], references: [id], onDelete: SetNull)
+  receiptLineItem ReceiptLineItem?
+
+  @@unique([source, sourceRef]) // idempotencia de ingesta (NULLs no colisionan)
+  @@index([canonicalInputId, region, scope, observedAt])
+  @@index([organizationId])
+  @@index([status])
+  @@index([source])
+}
+
+/// Consenso calculado por el worker (upsert). Una fila por insumo×region×scope×moneda.
+model PriceConsensus {
+  id               String     @id @default(uuid(7)) @db.Uuid
+  canonicalInputId String     @db.Uuid
+  region           String     @default("PE")
+  scope            PriceScope @default(INPUT)
+  currency         String     @default("PEN")
+
+  median     Decimal @db.Decimal(14, 4)
+  p25        Decimal @db.Decimal(14, 4)
+  p75        Decimal @db.Decimal(14, 4)
+  mean       Decimal @db.Decimal(14, 4)
+  mad        Decimal @db.Decimal(14, 6) // median absolute deviation
+  sampleSize Int
+  confidence Decimal @db.Decimal(5, 4) // 0..1
+
+  updatedAt DateTime @updatedAt
+
+  canonicalInput CanonicalInput @relation(fields: [canonicalInputId], references: [id], onDelete: Cascade)
+
+  @@unique([canonicalInputId, region, scope, currency])
+  @@index([canonicalInputId])
+}
+
+/// Radar de competencia: precios del PRODUCTO FINAL raspados del mercado.
+model MarketPrice {
+  id              String  @id @default(uuid(7)) @db.Uuid
+  organizationId  String? @db.Uuid // si está atado a un producto de un usuario
+  productId       String? @db.Uuid
+  productQuery    String
+  normalizedQuery String
+  region          String  @default("PE")
+  currency        String  @default("PEN")
+
+  minPrice     Decimal  @db.Decimal(14, 4)
+  p25          Decimal? @db.Decimal(14, 4)
+  avgPrice     Decimal  @db.Decimal(14, 4)
+  medianPrice  Decimal? @db.Decimal(14, 4)
+  p75          Decimal? @db.Decimal(14, 4)
+  premiumPrice Decimal? @db.Decimal(14, 4) // p90
+  sampleSize   Int
+
+  sourceBreakdown Json // { mercadolibre: 12, sodimac: 5, ... }
+  scrapingJobId   String?  @db.Uuid
+  capturedAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  product      Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  scrapingJob  ScrapingJob?  @relation(fields: [scrapingJobId], references: [id], onDelete: SetNull)
+
+  @@index([normalizedQuery, region, capturedAt])
+  @@index([productId])
+  @@index([organizationId])
+}
+
+model ReputationEvent {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  userId         String           @db.Uuid
+  organizationId String?          @db.Uuid
+  delta          Int
+  reason         ReputationReason
+  refType        String?
+  refId          String?
+  createdAt      DateTime         @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([organizationId])
+}
+
+enum PriceScope {
+  INPUT
+  FINAL_PRODUCT
+}
+
+enum PriceSource {
+  MANUAL
+  OCR
+  SCRAPE
+  OFFICIAL
+  SUPPLIER
+}
+
+enum PriceObservationStatus {
+  ACTIVE
+  REJECTED
+  PENDING_REVIEW
+}
+
+enum ReputationReason {
+  OBSERVATION_SURVIVED
+  OBSERVATION_REJECTED
+  OCR_VERIFIED
+  SUPPLIER_CONTRIBUTION
+  MANUAL_ADJUST
+}
+
+// =============================================================================
+// 7. BOLETAS / OCR
+// =============================================================================
+
+model Receipt {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  uploadedById   String         @db.Uuid
+  storageKey     String // key en R2
+  channel        ReceiptChannel
+  status         ReceiptStatus  @default(RECEIVED)
+  ocrProvider    OcrProvider?
+
+  rawText        String?   @db.Text
+  issuerRuc      String?
+  documentNumber String?
+  issuedAt       DateTime?
+  currency       String?
+  totalAmount    Decimal?  @db.Decimal(14, 4)
+
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+  processedAt  DateTime?
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy   User              @relation("ReceiptUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+  lineItems    ReceiptLineItem[]
+
+  @@index([organizationId, createdAt])
+  @@index([uploadedById])
+  @@index([status])
+}
+
+model ReceiptLineItem {
+  id                      String   @id @default(uuid(7)) @db.Uuid
+  receiptId               String   @db.Uuid
+  lineNo                  Int
+  rawDescription          String
+  matchedCanonicalInputId String?  @db.Uuid
+  quantity                Decimal? @db.Decimal(16, 6)
+  unit                    String?
+  unitPrice               Decimal? @db.Decimal(14, 4)
+  total                   Decimal? @db.Decimal(14, 4)
+  confidence              Decimal? @db.Decimal(5, 4)
+  confirmed               Boolean  @default(false)
+  priceObservationId      String?  @unique @db.Uuid // obs creada al confirmar
+
+  receipt               Receipt           @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  matchedCanonicalInput CanonicalInput?   @relation(fields: [matchedCanonicalInputId], references: [id], onDelete: SetNull)
+  priceObservation      PriceObservation? @relation(fields: [priceObservationId], references: [id], onDelete: SetNull)
+
+  @@index([receiptId])
+  @@index([matchedCanonicalInputId])
+}
+
+enum ReceiptChannel {
+  TELEGRAM
+  WEB
+  API
+}
+
+enum ReceiptStatus {
+  RECEIVED
+  PROCESSING
+  PARSED
+  CONFIRMED
+  FAILED
+}
+
+enum OcrProvider {
+  PADDLE
+  TESSERACT
+  TEXTRACT
+  VISION
+  GEMINI
+}
+
+// =============================================================================
+// 8. SCRAPING & DATOS EXTERNOS  (config en DB, no en código Python)
+// =============================================================================
+
+model ScrapingSource {
+  id           String             @id @default(uuid(7)) @db.Uuid
+  name         String             @unique
+  slug         String             @unique
+  type         ScrapingSourceType
+  baseUrl      String
+  config       Json               @default("{}") // selectores, paths de búsqueda, headers
+  enabled      Boolean            @default(true)
+  rateLimitRpm Int                @default(10)
+  priority     Int                @default(0)
+  lastRunAt    DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  jobs ScrapingJob[]
+}
+
+model ScrapingJob {
+  id              String            @id @default(uuid(7)) @db.Uuid
+  sourceId        String            @db.Uuid
+  organizationId  String?           @db.Uuid // si fue pedido por un usuario (on-demand)
+  requestedById   String?           @db.Uuid // ref suelta -> User
+  scope           PriceScope
+  query           String?
+  normalizedQuery String?
+  status          ScrapingJobStatus @default(QUEUED)
+  trigger         ScrapingTrigger   @default(CRON)
+  resultCount     Int               @default(0)
+  error           String?
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime          @default(now())
+
+  source       ScrapingSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  organization Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  marketPrices MarketPrice[]
+
+  @@index([sourceId, status])
+  @@index([organizationId])
+  @@index([status, createdAt])
+}
+
+model GovDataSource {
+  id         String      @id @default(uuid(7)) @db.Uuid
+  name       String      @unique
+  kind       GovDataKind
+  endpoint   String
+  config     Json        @default("{}")
+  enabled    Boolean     @default(true)
+  lastSyncAt DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  syncs GovDataSync[]
+}
+
+model GovDataSync {
+  id         String     @id @default(uuid(7)) @db.Uuid
+  sourceId   String     @db.Uuid
+  status     SyncStatus @default(RUNNING)
+  rowCount   Int?
+  error      String?
+  startedAt  DateTime   @default(now())
+  finishedAt DateTime?
+
+  source GovDataSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt])
+}
+
+/// Tasas de cambio (SBS/SUNAT) para normalización multi-moneda.
+model ExchangeRate {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  base      String // ISO 4217
+  quote     String // ISO 4217
+  rate      Decimal  @db.Decimal(18, 8)
+  source    String
+  validOn   DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@unique([base, quote, validOn, source])
+  @@index([base, quote, validOn])
+}
+
+enum ScrapingSourceType {
+  PLAYWRIGHT
+  HTTP
+  API
+}
+
+enum ScrapingJobStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+enum ScrapingTrigger {
+  CRON
+  USER
+  SYSTEM
+}
+
+enum GovDataKind {
+  SISAP
+  MIDAGRI
+  EXCHANGE_RATE
+}
+
+enum SyncStatus {
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+// =============================================================================
+// 9. ALERTAS & NOTIFICACIONES
+// =============================================================================
+
+model Alert {
+  id               String                @id @default(uuid(7)) @db.Uuid
+  organizationId   String                @db.Uuid
+  name             String
+  type             AlertType
+  productId        String?               @db.Uuid
+  canonicalInputId String?               @db.Uuid
+  thresholds       Json // { marginFloorPct } | { risePct } | { dropPct } ...
+  channels         NotificationChannel[]
+  enabled          Boolean               @default(true)
+  createdById      String?               @db.Uuid // ref suelta -> User
+  lastCheckedAt    DateTime?
+  lastTriggeredAt  DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product        Product?        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  canonicalInput CanonicalInput? @relation(fields: [canonicalInputId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([productId])
+  @@index([canonicalInputId])
+  @@index([enabled])
+}
+
+model Notification {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  organizationId String              @db.Uuid
+  userId         String?             @db.Uuid // null => para toda la org
+  channel        NotificationChannel
+  templateCode   String
+  payload        Json                @default("{}")
+  status         NotificationStatus  @default(PENDING)
+  error          String?
+  scheduledFor   DateTime?
+  sentAt         DateTime?
+  readAt         DateTime?
+  createdAt      DateTime            @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([userId, status])
+  @@index([status, scheduledFor])
+}
+
+enum AlertType {
+  MARGIN_DROP
+  INPUT_PRICE_RISE
+  COMPETITOR_PRICE_DROP
+  CONSENSUS_SHIFT
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  TELEGRAM
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+  CANCELED
+}
+
+// =============================================================================
+// 10. MARKETPLACE (lead-gen para proveedores)
+// =============================================================================
+
+model MarketplacePlacement {
+  id               String             @id @default(uuid(7)) @db.Uuid
+  supplierId       String             @db.Uuid
+  canonicalInputId String?            @db.Uuid
+  categoryId       String?            @db.Uuid
+  regions          String[]
+  bidType          MarketplaceBidType
+  bidAmount        Decimal            @db.Decimal(14, 4)
+  currency         String             @default("PEN")
+  dailyBudget      Decimal?           @db.Decimal(14, 4)
+  active           Boolean            @default(true)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  supplier       Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  canonicalInput CanonicalInput?    @relation(fields: [canonicalInputId], references: [id], onDelete: Cascade)
+  category       InputCategory?     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  events         MarketplaceEvent[]
+
+  @@index([supplierId])
+  @@index([canonicalInputId])
+  @@index([categoryId])
+  @@index([active])
+}
+
+model MarketplaceEvent {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  placementId    String               @db.Uuid
+  type           MarketplaceEventType
+  organizationId String?              @db.Uuid
+  userId         String?              @db.Uuid // ref suelta
+  context        Json                 @default("{}")
+  createdAt      DateTime             @default(now())
+
+  placement    MarketplacePlacement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  organization Organization?        @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([placementId, type, createdAt])
+  @@index([organizationId])
+}
+
+enum MarketplaceBidType {
+  CPM
+  CPC
+  CPL
+}
+
+enum MarketplaceEventType {
+  IMPRESSION
+  CLICK
+  LEAD
+}
+
+// =============================================================================
+// 11. AUDITORÍA
+// =============================================================================
+
+model AuditLog {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String?        @db.Uuid
+  actorType      AuditActorType @default(USER)
+  actorId        String?        @db.Uuid // ref suelta -> User (o id de servicio)
+  action         String // "product.update" | "setting.change" | ...
+  entity         String
+  entityId       String?
+  diff           Json?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime       @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([entity, entityId])
+  @@index([actorId])
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  SERVICE
+}

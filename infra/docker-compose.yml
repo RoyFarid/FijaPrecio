@@ -1,0 +1,66 @@
+# Backing services para DESARROLLO LOCAL.
+# En Railway estos son plugins/servicios gestionados; nada de esto se despliega.
+name: fijaprecio
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fijaprecio
+      POSTGRES_PASSWORD: fijaprecio
+      POSTGRES_DB: fijaprecio
+    ports:
+      # Host 5433 -> contenedor 5432: evita chocar con un PostgreSQL nativo de
+      # Windows/Linux que suele ocupar 5432. Ajusta DATABASE_URL en tu .env.
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U fijaprecio']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    ports:
+      - '6379:6379'
+
+  typesense:
+    image: typesense/typesense:27.1
+    command: '--data-dir /data --api-key=dev-only-key --enable-cors'
+    ports:
+      - '8108:8108'
+    volumes:
+      - typesense:/data
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio:/data
+
+  # Crea el bucket local una vez que MinIO está arriba.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+      mc mb --ignore-existing local/fijaprecio-dev;
+      mc anonymous set download local/fijaprecio-dev;
+      exit 0;
+      "
+
+volumes:
+  pgdata:
+  typesense:
+  minio:

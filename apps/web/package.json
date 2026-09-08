@@ -1,0 +1,33 @@
+{
+  "name": "@fijaprecio/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "next lint",
+    "clean": "rimraf .next .turbo"
+  },
+  "dependencies": {
+    "@fijaprecio/config-schema": "workspace:*",
+    "@fijaprecio/shared-types": "workspace:*",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@fijaprecio/eslint-config": "workspace:*",
+    "@fijaprecio/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
+    "eslint-config-next": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:"
+  }
+}

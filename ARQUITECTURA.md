@@ -140,6 +140,18 @@ flowchart TB
 | i18n | **next-intl** | Español primero, inglés/portugués después. Textos fuera del código. | react-i18next |
 | Tablas/grids | **TanStack Table** | Fichas técnicas y BOM son tablas editables | AG Grid (si se necesita nivel Excel) |
 
+**Implementado — `apps/web/` (fases 1–2)**: Next.js 15 App Router + React 19. Tailwind v4 (tokens en `src/styles/globals.css`, sin `tailwind.config`), primitivas propias en `src/components/ui/` (Button, Field/FieldMini, Select, Card, Callout, Badge, Spinner, Toggle, Stat, Tabs, Dialog) — sin shadcn CLI. **next-intl** con locale único `es` (todos los textos en `messages/es.json`, "cero hardcodeo"). **TanStack Query** (`Providers`, retry que respeta 4xx). **React Hook Form + Zod** (`src/lib/schemas.ts` replica los DTO del backend — no se importa `shared-types` en el cliente para no arrastrar Prisma; `src/lib/types.ts` tiene las formas de respuesta). Cliente HTTP: `src/lib/api.ts` (navegador, `credentials:'include'`, refresh single-flight en 401 + reintento) y `src/lib/api-server.ts` (RSC, reenvía cookies, sin refresh). `middleware.ts` = portón rápido por cookie `fp_at`.
+
+- **Fase 1 (fundación + auth)**: `/login`, `/register`, shell autenticado (`(app)/layout.tsx` verifica `/auth/me` server-side → `AppShell` con sidebar + campana de notificaciones + menú de usuario), `/dashboard`, `/settings` (cuenta + entitlements del plan + config efectiva), `/notifications`. `error.tsx` / `global-error.tsx` / `not-found.tsx`.
+- **Fase 2 (productos + costeo + radar + alertas)**: `/products` (lista → nuevo endpoint `GET /v1/products`), `/products/new` (form con `useFieldArray` para líneas de receta + componentes de costo, autocompletado de insumos vía `pg_trgm`, `datalist` de `units.allowed`), `/products/[id]` con tabs **Costeo** (ecualizador) · **Sensibilidad** · **Radar** (escala horizontal SVG min→premium con bandas + puntero de tu precio, sin dep de charts). `/alerts` CRUD (Dialog de alta/edición + toggle + borrar).
+- **Fase 3 (simulador de escenarios + tests)**: cuarta pestaña **Escenarios** en `/products/[id]`. Gated por `config['scenario_simulator']` → upsell o `ScenarioBuilder` (estado local `DraftScenario[]`, no RHF): overrides tipados, **Comparar** → `POST .../scenarios/compare` → tabla base vs escenarios con deltas coloreados, **Guardar**/recalcular/eliminar. Payload puro y testeado en `lib/scenario-draft.ts`. `vitest` en `apps/web` (config propia, entorno node, sólo `src/**/*.test.ts`).
+- **Fase 4 (editar producto/receta + historial del radar + migración de lint)**:
+  - **Backend**: `PATCH /v1/products/:id` (campos del producto, `rubro`/targets `null` = limpiar, `status` → set/clear `archivedAt`) · `PUT /v1/products/:id/recipe` (crea receta v+1, desactiva la anterior en la misma tx; reusa el helper `writeRecipe` con `resolveCanonicals` + find-or-create de `OrgInput`) · `GET /v1/products/:id/market-radar/history?region=` → serie de `MarketPrice` acotada por `radar_history_days` (entitlement).
+  - **Frontend**: `/products/[id]/edit` reusa `ProductForm` (ahora acepta `product?`; helpers puros en `lib/product-form.ts`: `productToFormValues`/`formToCreatePayload`/`formToRecipePayload`/`formToUpdatePayload`) → edit hace `PATCH` + `PUT recipe`. Botón "Editar" en el detalle. Gráfico de historial en la pestaña Radar: **Recharts** (`ComposedChart`: área mín–premium + línea de mediana + línea de promedio), lazy-loaded con `next/dynamic` (`ssr:false`) para no cargar ~100 kB en el resto del detalle. Helpers puros `lib/radar-chart.ts`.
+  - **Lint**: `apps/web` migró de `next lint` (deprecado) a `eslint.config.mjs` flat (`FlatCompat` traduce `next/core-web-vitals`; reusa `@fijaprecio/eslint-config`). Ahora la regla "cero hardcodeo" (`no-restricted-syntax` sobre `process.env`) también cubre `web`.
+
+Build/typecheck/lint/test verdes; el flujo real end-to-end no probado (Docker caído). **Pendiente**: `unitCostOverride` por línea no se edita desde el form (sólo `lastKnownPrice` del `OrgInput`) · tests de componentes (RTL + jsdom) · landing/SEO · el radar necesita `>= 2` snapshots para dibujar el gráfico.
+
 ### 5.2 Backend — API core
 
 | Elemento | Elección | Por qué |
@@ -176,6 +188,8 @@ flowchart TB
 | Fallback | `ILIKE` con índice GIN | Si no se despliega Typesense en el MVP. |
 
 > **Levenshtein** puro se usa solo para desempates finos (distancia ≤ 2) porque es O(n·m); el trabajo grueso lo hace trigram (indexable).
+
+**Implementado** (`apps/api/src/catalog/`, `normalize.ts` puro + 6 tests): `normalizeInputName(text, units)` (minúsculas → sin tildes → sin unidades [de `units.allowed`] / códigos numéricos / conectores). `CatalogService.search()` usa `pg_trgm` con el índice GIN (`SET LOCAL pg_trgm.similarity_threshold` + operador `%`, ranking por `similarity()`, busca en `normalizedName` y en `normalizedAlias`). `resolveOrCreateCanonical(name, unit)`: match ≥ `catalog.match_auto_assign_similarity` (0.62) → asigna + guarda el texto original como alias; si no → crea `CanonicalInput` con `catalog.autocreate_canonical_status` (PENDING_REVIEW). `POST /v1/products` ahora auto-resuelve el `canonicalInputId` de cada `OrgInput` → los precios de consenso fluyen sin intervención. Endpoints: `GET /v1/catalog/inputs?q=` (autocompletado), `GET /v1/catalog/inputs/:id`, `POST /v1/catalog/inputs`, `GET /v1/catalog/categories`. **Pendiente**: merge/dedup de canónicos (status MERGED + cola de revisión), desempate Levenshtein, Typesense (ADR-04: `pg_trgm` hasta ~10k insumos).
 
 ### 5.5 Infraestructura de apoyo
 
@@ -462,7 +476,7 @@ precio_final    = precio_sin_impuesto × (1 + igv_rate)           // si aplica
 - `margin_pct`, `igv_rate`, `overhead_allocation_method` → **config nivel 2**, nunca constantes.
 - Cada snapshot guarda el `breakdown_json` y un `inputs_hash` para saber si está desactualizado.
 
-**Implementado** (`apps/api/src/costing/engine.ts`, función pura + 14 tests): orden fixed/per-unit/per-hour → `PCT_OF_DIRECT_COST` → `PCT_OF_TOTAL_COST` (base fija = subtotal, evita recursión). `precio = markupOnPrice ? unit/(1-m) : unit×(1+m)` según `costing.price_from_markup_on_price`. Org sin IGV ⇒ override `tax.igv_rate = 0`. `ProductRecipe.outputQuantity` (nuevo, migración `20260908004818`) da el `unitCost`. Resolución de precio v1: `unitCostOverride` → `orgInput.lastKnownPrice` → marcado `missing` con warning (consenso/proveedor llegan con sus fases). Endpoints: `POST /v1/products`, `GET /v1/products/:id`, `GET /v1/products/:id/costing`, `POST /v1/products/:id/costing/snapshots`. Target costing calcula `targetCost`/`costGap`; el ranking de sensibilidad (§9.3) es fase aparte.
+**Implementado** (`apps/api/src/costing/engine.ts`, función pura + 14 tests): orden fixed/per-unit/per-hour → `PCT_OF_DIRECT_COST` → `PCT_OF_TOTAL_COST` (base fija = subtotal, evita recursión). `precio = markupOnPrice ? unit/(1-m) : unit×(1+m)` según `costing.price_from_markup_on_price`. Org sin IGV ⇒ override `tax.igv_rate = 0`. `ProductRecipe.outputQuantity` (nuevo, migración `20260908004818`) da el `unitCost`. Resolución de precio: `unitCostOverride` → `orgInput.lastKnownPrice` → **`PriceConsensus.median`** del insumo canónico (región de la org, si `confidence ≥ consensus.confidence_min_to_show`) → marcado `missing` con warning (proveedor llega con su fase). Endpoints: `GET /v1/products` (lista, sólo metadatos), `POST /v1/products`, `GET /v1/products/:id` (detalle serializado: producto + receta activa con líneas/componentes), `PATCH /v1/products/:id` (campos del producto), `PUT /v1/products/:id/recipe` (nueva versión de receta, desactiva la anterior), `GET /v1/products/:id/costing`, `POST /v1/products/:id/costing/snapshots`. Target costing calcula `targetCost`/`costGap`; el ranking de sensibilidad (§9.3) es fase aparte.
 
 ### 9.2 Target Costing (top-down / ingeniería inversa)
 
@@ -488,9 +502,13 @@ Salida ordenada por `contribucion_pct` desc → "La tela es el 65% de tu costo. 
 
 También cruza con `price_consensus`: "hay proveedores reportando esta tela a S/12.50 en Lima" → convierte el análisis en una acción concreta.
 
+**Implementado** (`apps/api/src/costing/sensitivity.ts`, puro + 9 tests): `analyzeSensitivity(input, config)` reusa `CostingService.prepare()`. Como `unitCost` es lineal en el precio de cada insumo y en el `value` de cada componente (incluso a través de los % ), el "precio que cierra la brecha" se resuelve exacto con 2 evaluaciones del motor (baseline + knob en 0 → pendiente), lo que respeta la cascada de los componentes `PCT_*`. Por driver: `contributionPct`, `gapCloseUnitPrice`/`gapCloseReductionPct`, `feasibleAlone` (recorte ≤ 100%), `marketMedianPrice` (mediana del consenso del insumo). Si el usuario paga por encima del mercado, el `headline` lo dice: _"…El mercado reporta ese insumo cerca de 4.2."_ Endpoint `GET /v1/products/:id/costing/sensitivity`.
+
 ### 9.4 Simulador de escenarios
 
 Un escenario = `recipe base` + lista de `overrides` (cambiar cantidad, cambiar insumo, cambiar proveedor, cambiar margen). El motor recalcula N escenarios en paralelo y devuelve una tabla comparativa. Premium: clonar línea de producción completa, comparar 5+ escenarios, guardar y versionar.
+
+**Implementado** (`apps/api/src/scenarios/` + `costing/scenario-engine.ts`, puro + 9 tests): `applyScenarioOverrides(base, overrides)` transforma el `EngineInput` (tipos `RECIPE_LINE`/`INPUT_PRICE`/`SUPPLIER_SWAP`/`COST_COMPONENT`/`MARGIN`) y se corre el **mismo** `computeCosting`. `POST /v1/products/:id/scenarios/compare` devuelve base + cada escenario + `delta` (no persiste). CRUD persistido: `POST/GET /v1/products/:id/scenarios`, `GET/POST(:recompute)/DELETE /v1/scenarios/:id` (guarda `Scenario` + `ScenarioOverride[]` + `ScenarioResult[]`). Gated con `@RequireEntitlement('scenario_simulator')` (FREE → 403) y `scenario_max_overrides` por escenario. "Clonar línea de producción" y swap con catálogo real de proveedor: pendientes.
 
 ### 9.5 Motor de consenso estadístico
 
@@ -515,6 +533,12 @@ Corre en el **worker**, disparado por (a) nueva `price_observation`, (b) cron ca
 ```
 
 > Los parámetros (`ventana`, `mad_threshold`, `source_weight`, `min_sample_size`, umbral de confianza para mostrar sugerencia) son filas de `app_settings`.
+
+**Implementado** (`apps/worker/src/consensus/`, engine puro + 10 tests): `computeConsensus(observations, config, now)`. MAD si `n ≥ 2×min_sample_size`, si no IQR; si el recorte deja `< min_sample_size` revierte y acepta todo. Media ponderada = `source_weight × recency_decay(half-life) × reputation_weight` (1×→`max_weight_multiplier` interpolando hasta `consensus.reputation_full_weight_at`). `confidence` = mezcla ponderada (`consensus.confidence_weights`) de tamaño / dispersión relativa (MAD/median) / diversidad de fuentes. Outliers → `status=REJECTED, rejectionReason='consensus:outlier'` (reversible: si vuelve a caer dentro, se re-activa). Config global vía `loadConsensusConfig` (fail-loud si falta un AppSetting). Disparo: cola BullMQ `consensus.recalc` (encolada por `api` al ingerir) + job repetible `consensus.sweep` cada `CONSENSUS_SWEEP_INTERVAL_MINUTES`. Ingesta: `POST /v1/price-observations` (manual, autenticado) y `POST /v1/internal/price-observations` (batch, `X-Internal-Token`). Lectura: `GET /v1/inputs/:id/consensus`. El costeo y la sensibilidad ya lo consumen (`CostingService.prepare()` hace una query de `PriceConsensus` por receta y devuelve `marketMedians` por línea). **Pendiente**: eventos de reputación por transición (idempotencia), conversión de unidades en la ingesta, notificación si el consenso se mueve > `consensus.notify_change_pct`.
+
+### Radar de competencia (producto final)
+
+**Implementado**: el scraper también raspa `scope=FINAL_PRODUCT`: `GET {api}/v1/internal/radar-targets` (productos ACTIVE, snapshot más viejo primero) → colecta el nombre del producto de todas las fuentes → `aggregate_market_price` (min / p25 / avg / median / p75 / p90 tras recortar extremos, `sourceBreakdown` por retailer) → `POST {api}/v1/internal/market-prices` → fila `MarketPrice`. Lectura: `GET /v1/products/:id/market-radar` → `{ market, yourPrice: {suggested, target}, position: { vsMedianPct, headroomToMedian, verdict } }` con `verdict` ∈ below_market / value / competitive / premium / above_market (`computeRadarPosition`, puro, 7 tests). `GET /v1/products/:id/market-radar/history?region=` → serie temporal de `MarketPrice` (ventana = entitlement `radar_history_days`) para el gráfico. El barrido periódico del scraper corre insumos **y** radar.
 
 ### 9.6 Reputación del aportante
 
@@ -565,6 +589,8 @@ raw_results
 - **Programado (cron nocturno):** top-N insumos/productos más consultados → respuesta instantánea al usuario (lee de `price_consensus` / `market_prices`).
 - **Bajo demanda (Premium):** el usuario pide "refrescar ahora" → job en cola → resultado en 10-60s vía WebSocket. Free: solo datos del último batch programado.
 
+**Implementado** (`services/scraper/`, FastAPI + `uv`, 20 tests de pipeline puro): APScheduler cada `SCRAPER_SWEEP_INTERVAL_MINUTES` → `GET {api}/v1/internal/scrape-targets` (insumos con `OrgInput` vivo, consenso más viejo primero) → por target, por cada `ScrapingSource` enabled: collector (`MercadoLibreCollector` API oficial / `HtmlCollector` httpx+selectolax / `PlaywrightCollector` lazy-import) → `pipeline` puro (`parse_price` multi-formato → `derive_unit_price` con `UnitConversion` → `trim_bounds` con `scraper.outlier_trim_pct`) → `POST {api}/v1/internal/price-observations` batch, idempotente por `sourceRef = {slug}:{YYYY-MM-DD}:{hash(url)}`. Config de scraping (selectores, search-path, field names) en `ScrapingSource.config`; cero parámetros en el código Python. `POST /internal/scrape` para on-demand. **Pendiente**: radar `FINAL_PRODUCT` → `MarketPrice`, conversión de moneda (USD se descarta), `gov-data-connectors`, registro de `ScrapingJob`.
+
 ---
 
 ## 11. OCR + Bot de Telegram
@@ -594,11 +620,15 @@ Usuario → foto de boleta al bot de Telegram
 - **Parser de boletas propio:** las boletas peruanas tienen estructura semi-estándar (encabezado con RUC, cuerpo tabular, IGV 18%, total). Se construyen *templates* por retailer frecuente + heurística genérica (regex de montos `S/\s?\d+[.,]\d{2}`, alineación de columnas por coordenadas del OCR).
 - **Interfaz `OcrProvider`** (adaptador): `PaddleProvider`, `TesseractProvider`, y espacio para `TextractProvider` / `VisionProvider` / `GeminiProvider` si algún día quieres pagar por precisión. Se elige por `app_settings.ocr.provider` **por plan** (Free → Paddle, Business → provider premium), sin tocar código.
 
+**Implementado** (`services/ocr/`, FastAPI + `uv`, 12 tests de preprocesado): `POST /internal/ocr` → `preprocess` (OpenCV: grises → downscale → deskew → adaptiveThreshold) → `provider.recognize(image)` → `{rawText, lines:[{text,confidence,bbox}]}`. `TesseractProvider` funciona hoy; `PaddleProvider` bajo el extra `paddle` (imagen pesada, no default). El parseo (`@fijaprecio/receipt-parser`, TS puro, 22 tests) extrae RUC / nº doc / fecha / moneda / total / IGV / líneas (desc, cant, unidad, PU, total) con `confidence` por línea (heurística: región de tabla + tokens numéricos finales + valida `cant·PU≈total`).
+
 ### 11.3 Bot
 
 - **nestjs-telegraf**, modo **webhook** (no polling) — Railway da URL pública, se registra con `setWebhook` + `secret_token`.
 - Puede ser un servicio aparte (`bot`) o un módulo del `api`. Recomendación: servicio aparte para aislar y escalar el webhook.
 - Vinculación de cuenta: el usuario genera un código en la web → lo envía al bot → se asocia `telegram_user_id ↔ user`.
+
+**Implementado** (flujo completo cableado, falta smoke test integral): `POST /v1/telegram/link-code` (api) → `/link CODE` en el bot verifica el `TelegramLink`. Foto → bot sube a R2 (`@fijaprecio/storage`, MinIO local) → `Receipt(TELEGRAM)` → cola `ocr.parse`. Worker `OcrProcessor`: `storage.get` → `POST {OCR_URL}/internal/ocr` → `parseReceipt` → match por línea (`GET {API_URL}/v1/internal/catalog/match`) → persiste `ReceiptLineItem[]` → `POST {BOT_URL}/internal/notify`. Bot manda el resumen con botones ✅/❌ → confirmar llama `POST /v1/internal/receipts/:id/confirm` → `PriceObservation(source=OCR)` + `OrgInput.lastKnownPrice` + recálculo de consenso.
 
 ---
 
@@ -610,6 +640,12 @@ Usuario → foto de boleta al bot de Telegram
 - Plantillas en `notification_templates` por idioma — **texto fuera del código**.
 - Anti-spam: agrupación (digest diario para Free, tiempo real para Premium), deduplicación por `alert_id + ventana`.
 
+**Implementado** (`apps/api/src/{alerts,notifications}/`, reglas puras + 9 tests):
+- CRUD `POST/GET/PATCH/DELETE /v1/alerts`, gated por `alerts_max`. Tipos: `MARGIN_DROP` (producto + `marginFloorPct` → recomputa costeo), `INPUT_PRICE_RISE` (insumo + `risePct` → `PriceConsensus.median` vs `OrgInput.lastKnownPrice`), `COMPETITOR_PRICE_DROP` (producto + `dropPct` → dos últimos `MarketPrice`). `CONSENSUS_SHIFT` pendiente (necesita histórico).
+- El **worker** dispara `alerts.check` según `alerts.check_cron` (BullMQ repeatable pattern) → `POST /v1/internal/alerts/run` → `AlertsEvaluatorService.runAll()` (dedup por `Alert.lastTriggeredAt` + `notify.dedup_hours`; FREE → `Notification.scheduledFor` = próximo `alerts.digest_cron_free`, Premium → inmediato).
+- `NotificationsProcessor` (worker, cada `NOTIFICATIONS_POLL_MINUTES`) procesa PENDING: renderiza `NotificationTemplate` (`renderTemplate` puro, `{{clave}}`), envía por canal — IN_APP (no-op, lo lee el front), EMAIL (Resend), TELEGRAM (`POST {bot}/internal/send-notification`).
+- Centro de notificaciones: `GET /v1/notifications`, `/unread-count`, `POST /:id/read`, `/read-all`.
+
 ---
 
 ## 13. Multi-tenancy, auth y planes
@@ -618,7 +654,7 @@ Usuario → foto de boleta al bot de Telegram
 
 - `organizationId` obligatorio en toda entidad de negocio.
 - `JwtAuthGuard` extrae `organizationId` del JWT → `AsyncLocalStorage` (`orgContextStorage.enterWith`) → los servicios lo inyectan en el `where`. **Implementado.**
-- Refuerzo: **Postgres RLS**. `PrismaService.withOrg(fn)` abre una tx con `set_config('app.current_org', …, true)`. Las políticas ya están en la migración `20260907235300_manual_*`. **Pendiente:** para que RLS filtre de verdad, el `DATABASE_URL` de la app debe usar un rol **NOBYPASSRLS no-superusuario** (`fijaprecio_app`) con grants CRUD; el rol por defecto de Postgres/Railway hace bypass aunque las tablas estén `FORCE ROW LEVEL SECURITY`.
+- Refuerzo: **Postgres RLS**. Políticas en `20260907235300_manual_*` (21 tablas de tenant). El rol `fijaprecio_app` NOBYPASSRLS lo crea la migración `20260908113000_rls_app_role` (+ grants + ALTER DEFAULT PRIVILEGES). Con `DB_RLS_ENFORCED=true` + `APP_DATABASE_URL`, la **API** conecta con ese rol y la extensión Prisma `rls` (`apps/api/src/prisma/rls.extension.ts`) envuelve cada op de modelo en una tx de 2 sentencias que fija `app.current_org` (request de tenant) o `app.bypass_rls=on` (system), según el `OrgContext` de 3 modos que pone `JwtAuthGuard` en `orgContextStorage` (`enterWith`). `@RlsSystem()` marca controladores internos/auth como modo sistema. Transacciones interactivas y raw sobre tablas de tenant van por `PrismaService.withRls(fn, orgId?)` / `asSystem(fn)` (usan el cliente base, sin la extensión, bajo `rlsReentry`). `worker`/`bot` siguen como el dueño. **Servicios migrados** (`auth` register→`asSystem`, `products.create`→`withRls`, `price-observations.scrapeTargets` + `market-radar.radarTargets` raw→`asSystem`). El scoping primario sigue siendo el `where: { organizationId }`; RLS es la red de seguridad. Verificación: `pnpm db:rls:check`. **Estado:** listo para `DB_RLS_ENFORCED=true`; falta probar con Postgres arriba (Docker) antes de activar en `.env`. Ver `packages/db/prisma/README.md §4b`.
 
 ### 13.2 Autenticación
 

@@ -1,29 +1,39 @@
 # services/ocr
 
-Microservicio Python (FastAPI) de OCR de boletas. Fuera del workspace pnpm (**uv**).
+Microservicio Python (FastAPI) de OCR de boletas. `uv` (no está en el workspace pnpm).
 
 ## Local
 
 ```bash
 cd services/ocr
 uv sync
+# binario de tesseract (Docker ya lo trae):  choco install tesseract  /  apt install tesseract-ocr tesseract-ocr-spa
+cp .env.example .env
 uv run uvicorn app.main:app --reload --port 8001
+
+uv run pytest        # preprocesado + carga de imagen (no requiere binario)
+uv run ruff check .
+uv run mypy app
 ```
 
-> `paddleocr` + `paddlepaddle` son pesados (~1 GB). Para iterar rápido en local
-> puedes empezar solo con Tesseract (`tesseract-ocr-spa`) tras la interfaz
-> `OcrProvider` y añadir Paddle cuando toque.
+## Cómo funciona
 
-## Diseño
+```
+POST /internal/ocr  { imageBase64 | imageUrl, provider? }   (X-Internal-Token)
+  → load_image_bytes  (base64 inline o descarga, con tope de tamaño)
+  → preprocess         (OpenCV: grises → downscale → deskew → binariza)
+  → provider.recognize (TesseractProvider por defecto)
+  ← { rawText, lines: [{ text, confidence, bbox }], provider }
+```
 
-- `app/providers/base.py` — interfaz `OcrProvider` (adaptadores intercambiables).
-- Primario **PaddleOCR** (self-host), fallback **Tesseract**.
-- El provider efectivo llega en el request (lo decide la API core según el plan,
-  `AppSetting ocr.provider_by_plan`).
-- Este servicio SOLO hace OCR (texto + layout). El parseo de boleta y el match
-  contra `CanonicalInput` se hacen en el worker de `api`.
+- **`OcrProvider`** (Protocol): `TesseractProvider` (self-host, funciona hoy),
+  `PaddleProvider` (extra `paddle`, ~2 GB — no se instala por defecto), espacio
+  para Textract / Vision / Gemini. La selección por plan la decide la API core
+  (`AppSetting ocr.provider_by_plan`) y llega en el body del request.
+- El **parseo de boleta** (RUC, fecha, tabla de ítems, IGV) NO está aquí: lo hace
+  `@fijaprecio/receipt-parser` en el worker, sobre `rawText` + `lines`.
 
 ## Railway
 
-Servicio con **Root Directory = `services/ocr`**, builder Dockerfile, sin dominio
-público. Healthcheck 60s (carga de modelos al arrancar).
+- Root Directory = `services/ocr`, builder Dockerfile (instala `tesseract-ocr-spa`).
+- Sin dominio público. Lo llama el `worker`.

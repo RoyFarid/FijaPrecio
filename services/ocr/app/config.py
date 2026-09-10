@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import Field, HttpUrl
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,9 +14,13 @@ class Settings(BaseSettings):
 
     internal_api_token: str = Field(..., alias="INTERNAL_API_TOKEN", min_length=32)
 
-    # Proveedor OCR por defecto. La selección real por plan la decide la API core
-    # (AppSetting `ocr.provider_by_plan`) y llega en el request.
-    default_provider: str = Field("paddle", alias="OCR_DEFAULT_PROVIDER")
+    # Proveedor por defecto si el request no trae uno. La selección real por plan
+    # la decide la API core (AppSetting `ocr.provider_by_plan`) y llega en el body.
+    default_provider: str = Field("tesseract", alias="OCR_DEFAULT_PROVIDER")
+
+    tesseract_lang: str = Field("spa+eng", alias="OCR_TESSERACT_LANG")
+    max_image_bytes: int = Field(12_000_000, alias="OCR_MAX_IMAGE_BYTES")
+    download_timeout_seconds: float = Field(20.0, alias="OCR_DOWNLOAD_TIMEOUT_SECONDS")
 
     # Credenciales opcionales de proveedores cloud (adaptadores intercambiables)
     aws_region: str | None = Field(None, alias="AWS_REGION")
@@ -28,4 +32,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]
+    return Settings()

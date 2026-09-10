@@ -13,15 +13,18 @@ dependencies = [
     "opencv-python-headless>=4.10",
     "numpy>=2.1",
     "structlog>=24.4",
-    # OCR self-host. paddleocr es pesado; se puede diferir tras la interfaz OcrProvider.
-    "paddleocr>=2.9",
-    "paddlepaddle>=2.6",
     "pytesseract>=0.3.13",
 ]
+
+[project.optional-dependencies]
+# PaddleOCR es pesado (~2 GB con paddlepaddle). El adaptador existe siempre;
+# instala este extra en la imagen que quiera usarlo:  uv sync --extra paddle
+paddle = ["paddleocr>=2.9", "paddlepaddle>=2.6"]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3",
+    "pytest-asyncio>=0.24",
     "ruff>=0.8",
     "mypy>=1.13",
 ]
@@ -29,6 +32,22 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["cv2", "pytesseract", "paddleocr"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-q"
+asyncio_mode = "auto"
 
 [build-system]
 requires = ["hatchling"]

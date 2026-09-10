@@ -3,7 +3,13 @@ import { LoggerModule } from 'nestjs-pino';
 import { env } from './config/env.js';
 import { PrismaService } from './prisma.js';
 import { HealthController } from './health.controller.js';
-import { ConsensusProcessor } from './processors/consensus.processor.js';
+import { ConsensusService } from './consensus/consensus.service.js';
+import { ConsensusProcessor } from './consensus/consensus.processor.js';
+import { OcrService } from './ocr/ocr.service.js';
+import { OcrProcessor } from './ocr/ocr.processor.js';
+import { AlertsProcessor } from './alerts/alerts.processor.js';
+import { NotificationsService } from './notifications/notifications.service.js';
+import { NotificationsProcessor } from './notifications/notifications.processor.js';
 
 @Module({
   imports: [
@@ -17,9 +23,14 @@ import { ConsensusProcessor } from './processors/consensus.processor.js';
   controllers: [HealthController],
   providers: [
     PrismaService,
+    ConsensusService,
     ConsensusProcessor,
-    // TODO: OcrProcessor, ScrapeOnDemandProcessor, AlertsProcessor,
-    //       NotificationsProcessor, PdfExportProcessor
+    OcrService,
+    OcrProcessor,
+    AlertsProcessor,
+    NotificationsService,
+    NotificationsProcessor,
+    // TODO: ScrapeOnDemandProcessor, PdfExportProcessor
   ],
 })
 export class AppModule {}

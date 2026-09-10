@@ -14,7 +14,9 @@
   "dependencies": {
     "@fijaprecio/config-schema": "workspace:*",
     "@fijaprecio/db": "workspace:*",
+    "@fijaprecio/receipt-parser": "workspace:*",
     "@fijaprecio/shared-types": "workspace:*",
+    "@fijaprecio/storage": "workspace:*",
     "@nestjs/common": "catalog:",
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",

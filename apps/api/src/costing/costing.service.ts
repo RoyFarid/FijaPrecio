@@ -31,6 +31,25 @@ export class CostingService {
     return { ...result, computedAt: new Date().toISOString() };
   }
 
+  /**
+   * Prepara `engineInput` + `engineConfig` + medianas de mercado (consenso) de la
+   * receta activa. Lo consumen el costeo y el análisis de sensibilidad.
+   */
+  async prepare(
+    orgId: string,
+    productId: string,
+  ): Promise<{
+    engineInput: EngineInput;
+    engineConfig: EngineConfig;
+    marketMedians: Record<string, number | null>;
+  }> {
+    const [{ engineInput, marketMedians }, engineConfig] = await Promise.all([
+      this.buildEngineInput(orgId, productId),
+      this.loadConfig(orgId),
+    ]);
+    return { engineInput, engineConfig, marketMedians };
+  }
+
   /** Costea y guarda un CostingSnapshot auditable. */
   async snapshotForProduct(orgId: string, productId: string): Promise<CostingResult & { id: string }> {
     const { product, recipe, engineInput } = await this.buildEngineInput(orgId, productId);
@@ -77,6 +96,7 @@ export class CostingService {
     const product = await this.prisma.client.product.findFirst({
       where: { id: productId, organizationId: orgId },
       include: {
+        organization: { select: { region: true } },
         recipes: {
           where: { isActive: true },
           include: {
@@ -91,7 +111,46 @@ export class CostingService {
     const recipe = product.recipes[0];
     if (!recipe) throw new NotFoundException('El producto no tiene una receta activa');
 
+    // Consenso de mercado: una sola query para todos los insumos de la receta.
+    const canonicalIds = [
+      ...new Set(
+        recipe.lines
+          .map((l) => l.orgInput.canonicalInputId)
+          .filter((id): id is string => id != null),
+      ),
+    ];
+    let consensusByCanonical = new Map<string, { median: number; confidence: number }>();
+    let minConfidenceToUse = 1;
+    if (canonicalIds.length > 0) {
+      const [rows, minShow] = await Promise.all([
+        this.prisma.client.priceConsensus.findMany({
+          where: {
+            canonicalInputId: { in: canonicalIds },
+            region: product.organization.region,
+            scope: 'INPUT',
+            currency: product.currency,
+          },
+          select: { canonicalInputId: true, median: true, confidence: true },
+        }),
+        this.config.getGlobal('consensus.confidence_min_to_show'),
+      ]);
+      minConfidenceToUse = minShow;
+      consensusByCanonical = new Map(
+        rows.map((r) => [
+          r.canonicalInputId,
+          { median: r.median.toNumber(), confidence: r.confidence.toNumber() },
+        ]),
+      );
+    }
+
+    const marketMedians: Record<string, number | null> = {};
+
     const lines: EngineLine[] = recipe.lines.map((l) => {
+      const consensus = l.orgInput.canonicalInputId
+        ? consensusByCanonical.get(l.orgInput.canonicalInputId)
+        : undefined;
+      marketMedians[l.id] = consensus?.median ?? null;
+
       let unitCost = 0;
       let priceSource: PriceSource = 'missing';
       if (l.unitCostOverride != null) {
@@ -100,6 +159,9 @@ export class CostingService {
       } else if (l.orgInput.lastKnownPrice != null) {
         unitCost = l.orgInput.lastKnownPrice.toNumber();
         priceSource = 'org_input';
+      } else if (consensus && consensus.confidence >= minConfidenceToUse) {
+        unitCost = consensus.median;
+        priceSource = 'consensus';
       }
       return {
         ref: l.id,
@@ -130,7 +192,7 @@ export class CostingService {
       targetMarginPct: dec(product.targetMarginPct),
     };
 
-    return { product, recipe, engineInput };
+    return { product, recipe, engineInput, marketMedians };
   }
 
   private hashInputs(input: EngineInput, config: EngineConfig): string {

@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { AppConfigService } from './app-config.service.js';
-import type { BooleanConfigKey } from './config-keys.js';
+import type { BooleanConfigKey } from '@fijaprecio/shared-types';
 
 export const REQUIRE_ENTITLEMENT_KEY = 'auth:entitlement';
 
@@ -21,8 +21,9 @@ export const REQUIRE_ENTITLEMENT_KEY = 'auth:entitlement';
  *
  * Los límites numéricos (cuotas) NO se validan aquí: requieren contar uso.
  */
-export const RequireEntitlement = (key: BooleanConfigKey): MethodDecorator =>
-  SetMetadata(REQUIRE_ENTITLEMENT_KEY, key);
+export const RequireEntitlement = (
+  key: BooleanConfigKey,
+): MethodDecorator & ClassDecorator => SetMetadata(REQUIRE_ENTITLEMENT_KEY, key);
 
 @Injectable()
 export class EntitlementsGuard implements CanActivate {

@@ -11,6 +11,7 @@ import { ACCESS_COOKIE } from './cookies.js';
 import { TokenService } from './token.service.js';
 import type { RequestAuth } from './auth.types.js';
 import { orgContextStorage } from '../tenancy/org-context.js';
+import { RLS_SYSTEM_KEY } from '../tenancy/rls-mode.js';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -20,11 +21,15 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (isPublic) return true;
+    const targets = [context.getHandler(), context.getClass()];
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, targets);
+    if (isPublic) {
+      // Rutas internas / auth: corren en modo sistema para RLS (bypass).
+      if (this.reflector.getAllAndOverride<boolean>(RLS_SYSTEM_KEY, targets)) {
+        orgContextStorage.enterWith({ mode: 'system' });
+      }
+      return true;
+    }
 
     const req = context.switchToHttp().getRequest<Request>();
     const token = this.extractToken(req);
@@ -40,6 +45,7 @@ export class JwtAuthGuard implements CanActivate {
 
     // Abre el contexto de tenant para el resto de la ejecución de esta request.
     orgContextStorage.enterWith({
+      mode: 'tenant',
       userId: auth.userId,
       organizationId: auth.organizationId,
       role: auth.role,

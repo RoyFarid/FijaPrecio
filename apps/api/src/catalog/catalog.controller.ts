@@ -1,0 +1,69 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { CatalogService, type CatalogMatch } from './catalog.service.js';
+import { ZodBody } from '../common/zod-validation.pipe.js';
+import {
+  catalogSearchSchema,
+  createCanonicalInputSchema,
+  type CatalogSearchQuery,
+  type CreateCanonicalInput,
+} from './dto.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import { Public } from '../auth/public.decorator.js';
+import { InternalTokenGuard } from '../auth/internal-token.guard.js';
+import { RlsSystem } from '../tenancy/rls-mode.js';
+
+@Controller('catalog')
+export class CatalogController {
+  constructor(private readonly catalog: CatalogService) {}
+
+  /** Autocompletado de insumos canónicos (trigram). */
+  @Get('inputs')
+  search(
+    @Query(new ZodBody(catalogSearchSchema)) query: CatalogSearchQuery,
+  ): Promise<CatalogMatch[]> {
+    return this.catalog.search(query.q, query.limit);
+  }
+
+  @Get('inputs/:id')
+  get(@Param('id', ParseUUIDPipe) id: string) {
+    return this.catalog.getCanonicalInput(id);
+  }
+
+  @Post('inputs')
+  create(
+    @CurrentUser('userId') userId: string,
+    @Body(new ZodBody(createCanonicalInputSchema)) dto: CreateCanonicalInput,
+  ): Promise<{ id: string }> {
+    return this.catalog.createCanonicalInput(dto, userId);
+  }
+
+  @Get('categories')
+  categories() {
+    return this.catalog.listCategories();
+  }
+}
+
+@Public()
+@RlsSystem()
+@UseGuards(InternalTokenGuard)
+@Controller('internal/catalog')
+export class InternalCatalogController {
+  constructor(private readonly catalog: CatalogService) {}
+
+  /** Match trigram para el worker (OCR → ReceiptLineItem.matchedCanonicalInputId). */
+  @Get('match')
+  match(
+    @Query(new ZodBody(catalogSearchSchema)) query: CatalogSearchQuery,
+  ): Promise<CatalogMatch[]> {
+    return this.catalog.search(query.q, query.limit);
+  }
+}

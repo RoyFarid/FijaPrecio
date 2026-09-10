@@ -13,6 +13,7 @@ import { ZodBody } from '../common/zod-validation.pipe.js';
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from './dto.js';
 import { Public } from './public.decorator.js';
 import { CurrentUser } from './current-user.decorator.js';
+import { RlsSystem } from '../tenancy/rls-mode.js';
 import {
   REFRESH_COOKIE,
   clearSessionCookies,
@@ -35,6 +36,7 @@ function respondWithSession(res: Response, session: Session): { user: SessionUse
   return { user: session.user };
 }
 
+@RlsSystem()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}

@@ -6,7 +6,7 @@ import {
   CONFIG_SCHEMAS,
   type ConfigKey,
   type ConfigValue,
-} from './config-keys.js';
+} from '@fijaprecio/shared-types';
 
 type Bag = Record<string, unknown>;
 

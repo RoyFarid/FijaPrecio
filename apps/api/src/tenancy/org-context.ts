@@ -1,11 +1,15 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { MembershipRole } from '@fijaprecio/db';
 
-export interface OrgContext {
-  userId: string;
-  organizationId: string;
-  role: MembershipRole;
-}
+/**
+ * Contexto por request para RLS:
+ *   - `tenant`: request autenticada → las queries fijan `app.current_org`.
+ *   - `system`: cron / ingesta interna / auth → las queries usan `app.bypass_rls`.
+ * Sin contexto (health, rutas sueltas) el PrismaService trata la query como `system`.
+ */
+export type OrgContext =
+  | { mode: 'tenant'; userId: string; organizationId: string; role: MembershipRole }
+  | { mode: 'system' };
 
 const storage = new AsyncLocalStorage<OrgContext>();
 
@@ -20,9 +24,8 @@ export function currentOrgContext(): OrgContext | undefined {
   return storage.getStore();
 }
 
-/** Igual que arriba pero exige que exista (rutas autenticadas). */
-export function requireOrgContext(): OrgContext {
+/** organizationId si la request es de tenant. */
+export function currentOrgId(): string | undefined {
   const ctx = storage.getStore();
-  if (!ctx) throw new Error('No hay contexto de organización en este scope');
-  return ctx;
+  return ctx?.mode === 'tenant' ? ctx.organizationId : undefined;
 }

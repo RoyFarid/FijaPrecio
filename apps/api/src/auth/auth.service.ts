@@ -55,7 +55,8 @@ export class AuthService {
 
     const passwordHash = await this.passwords.hash(input.password);
 
-    const { user, membership } = await this.prisma.client.$transaction(async (tx) => {
+    // asSystem: se está creando la org — todavía no hay tenant al que fijar RLS.
+    const { user, membership } = await this.prisma.asSystem(async (tx) => {
       const user = await tx.user.create({
         data: { email, name: input.name, passwordHash, locale: 'es-PE' },
       });

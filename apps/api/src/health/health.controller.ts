@@ -2,8 +2,10 @@ import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
 import { Public } from '../auth/public.decorator.js';
+import { RlsSystem } from '../tenancy/rls-mode.js';
 
 @Public()
+@RlsSystem()
 @Controller('health')
 export class HealthController {
   constructor(

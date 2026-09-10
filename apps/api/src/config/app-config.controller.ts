@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppConfigService } from './app-config.service.js';
-import type { ConfigKey } from './config-keys.js';
+import type { ConfigKey } from '@fijaprecio/shared-types';
 import { CurrentOrg } from '../tenancy/current-org.decorator.js';
 
 @Controller('config')

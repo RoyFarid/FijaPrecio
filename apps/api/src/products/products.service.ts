@@ -1,15 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@fijaprecio/db';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { CatalogService } from '../catalog/catalog.service.js';
 import { slugify } from '../auth/slug.js';
-import type { CreateProductInput } from './dto.js';
+import type {
+  CreateProductInput,
+  ReplaceRecipeInput,
+  UpdateProductInput,
+} from './dto.js';
+
+type RecipeDto = CreateProductInput['recipe'];
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly catalog: CatalogService,
+  ) {}
 
   async create(orgId: string, userId: string, dto: CreateProductInput) {
-    return this.prisma.client.$transaction(async (tx) => {
+    const canonicalByName = await this.resolveCanonicals(dto.recipe);
+
+    return this.prisma.withRls(async (tx) => {
       const product = await tx.product.create({
         data: {
           organizationId: orgId,
@@ -23,77 +35,262 @@ export class ProductsService {
         },
       });
 
-      // find-or-create de OrgInput por displayName (único por organización)
-      const orgInputIds = new Map<string, string>();
-      for (const line of dto.recipe.lines) {
-        const name = line.input.name;
-        if (orgInputIds.has(name)) continue;
-        const existing = await tx.orgInput.findUnique({
-          where: { organizationId_displayName: { organizationId: orgId, displayName: name } },
-          select: { id: true },
-        });
-        if (existing) {
-          if (line.input.unitCost != null) {
-            await tx.orgInput.update({
-              where: { id: existing.id },
-              data: { lastKnownPrice: line.input.unitCost },
-            });
-          }
-          orgInputIds.set(name, existing.id);
-        } else {
-          const created = await tx.orgInput.create({
-            data: {
-              organizationId: orgId,
-              displayName: name,
-              unit: line.input.unit,
-              lastKnownPrice: line.input.unitCost ?? null,
-              currency: dto.currency,
-            },
-            select: { id: true },
-          });
-          orgInputIds.set(name, created.id);
-        }
-      }
-
-      await tx.productRecipe.create({
-        data: {
-          productId: product.id,
-          version: 1,
-          isActive: true,
-          outputQuantity: dto.recipe.outputQuantity,
-          outputUnit: dto.recipe.outputUnit ?? null,
-          laborMinutes: dto.recipe.laborMinutes ?? null,
-          createdById: userId,
-          lines: {
-            create: dto.recipe.lines.map((line, i) => ({
-              orgInputId: orgInputIds.get(line.input.name)!,
-              quantity: line.quantity,
-              unit: line.unit ?? line.input.unit,
-              wastePct: line.wastePct,
-              unitCostOverride: line.unitCostOverride ?? null,
-              sortOrder: i,
-            })),
-          },
-          costComponents: {
-            create: dto.recipe.components.map((c, i) => ({
-              type: c.type,
-              label: c.label,
-              calc: c.calc,
-              value: c.value,
-              sortOrder: i,
-            })),
-          },
-        },
+      await this.writeRecipe(tx, {
+        orgId,
+        userId,
+        productId: product.id,
+        currency: dto.currency,
+        version: 1,
+        recipe: dto.recipe,
+        canonicalByName,
       });
 
       return this.load(tx, orgId, product.id);
+    }, orgId);
+  }
+
+  /** PATCH de los datos del producto (no la receta). */
+  async update(orgId: string, productId: string, dto: UpdateProductInput) {
+    return this.prisma.withRls(async (tx) => {
+      const data: Prisma.ProductUpdateInput = {};
+      if (dto.name !== undefined) data.name = dto.name;
+      if (dto.rubro !== undefined) data.rubro = dto.rubro;
+      if (dto.currency !== undefined) data.currency = dto.currency;
+      if (dto.targetPrice !== undefined) data.targetPrice = dto.targetPrice;
+      if (dto.targetMarginPct !== undefined) data.targetMarginPct = dto.targetMarginPct;
+      if (dto.status !== undefined) {
+        data.status = dto.status;
+        data.archivedAt = dto.status === 'ARCHIVED' ? new Date() : null;
+      }
+
+      const { count } = await tx.product.updateMany({
+        where: { id: productId, organizationId: orgId },
+        data,
+      });
+      if (count === 0) throw new NotFoundException('Producto no encontrado');
+
+      return this.load(tx, orgId, productId);
+    }, orgId);
+  }
+
+  /** PUT de la receta activa: nueva versión, desactiva la anterior. */
+  async replaceRecipe(
+    orgId: string,
+    userId: string,
+    productId: string,
+    dto: ReplaceRecipeInput,
+  ) {
+    const canonicalByName = await this.resolveCanonicals(dto);
+
+    return this.prisma.withRls(async (tx) => {
+      const product = await tx.product.findFirst({
+        where: { id: productId, organizationId: orgId },
+        select: { currency: true, recipes: { orderBy: { version: 'desc' }, take: 1, select: { version: true } } },
+      });
+      if (!product) throw new NotFoundException('Producto no encontrado');
+
+      await tx.productRecipe.updateMany({
+        where: { productId, isActive: true },
+        data: { isActive: false },
+      });
+
+      await this.writeRecipe(tx, {
+        orgId,
+        userId,
+        productId,
+        currency: product.currency,
+        version: (product.recipes[0]?.version ?? 0) + 1,
+        recipe: dto,
+        canonicalByName,
+      });
+
+      return this.load(tx, orgId, productId);
+    }, orgId);
+  }
+
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Resuelve el insumo canónico de cada línea ANTES de la tx: el matching hace
+   * sus propias escrituras (crea CanonicalInput / alias) y una tx interna.
+   */
+  private async resolveCanonicals(recipe: RecipeDto): Promise<Map<string, string>> {
+    const byName = new Map<string, string>();
+    for (const line of recipe.lines) {
+      if (byName.has(line.input.name)) continue;
+      const { canonicalInputId } = await this.catalog.resolveOrCreateCanonical(
+        line.input.name,
+        line.input.unit,
+      );
+      byName.set(line.input.name, canonicalInputId);
+    }
+    return byName;
+  }
+
+  /** find-or-create de OrgInput por displayName + crea la ProductRecipe. */
+  private async writeRecipe(
+    tx: Prisma.TransactionClient,
+    args: {
+      orgId: string;
+      userId: string;
+      productId: string;
+      currency: string;
+      version: number;
+      recipe: RecipeDto;
+      canonicalByName: Map<string, string>;
+    },
+  ): Promise<void> {
+    const { orgId, userId, productId, currency, version, recipe, canonicalByName } = args;
+
+    const orgInputIds = new Map<string, string>();
+    for (const line of recipe.lines) {
+      const name = line.input.name;
+      if (orgInputIds.has(name)) continue;
+      const existing = await tx.orgInput.findUnique({
+        where: { organizationId_displayName: { organizationId: orgId, displayName: name } },
+        select: { id: true, canonicalInputId: true },
+      });
+      const canonicalInputId = canonicalByName.get(name) ?? null;
+      if (existing) {
+        const patch: Prisma.OrgInputUpdateInput = {};
+        if (line.input.unitCost != null) patch.lastKnownPrice = line.input.unitCost;
+        if (canonicalInputId && existing.canonicalInputId == null) {
+          patch.canonicalInput = { connect: { id: canonicalInputId } };
+        }
+        if (Object.keys(patch).length > 0) {
+          await tx.orgInput.update({ where: { id: existing.id }, data: patch });
+        }
+        orgInputIds.set(name, existing.id);
+      } else {
+        const created = await tx.orgInput.create({
+          data: {
+            organizationId: orgId,
+            displayName: name,
+            unit: line.input.unit,
+            lastKnownPrice: line.input.unitCost ?? null,
+            currency,
+            canonicalInputId,
+          },
+          select: { id: true },
+        });
+        orgInputIds.set(name, created.id);
+      }
+    }
+
+    await tx.productRecipe.create({
+      data: {
+        productId,
+        version,
+        isActive: true,
+        outputQuantity: recipe.outputQuantity,
+        outputUnit: recipe.outputUnit ?? null,
+        laborMinutes: recipe.laborMinutes ?? null,
+        createdById: userId,
+        lines: {
+          create: recipe.lines.map((line, i) => ({
+            orgInputId: orgInputIds.get(line.input.name)!,
+            quantity: line.quantity,
+            unit: line.unit ?? line.input.unit,
+            wastePct: line.wastePct,
+            unitCostOverride: line.unitCostOverride ?? null,
+            sortOrder: i,
+          })),
+        },
+        costComponents: {
+          create: recipe.components.map((c, i) => ({
+            type: c.type,
+            label: c.label,
+            calc: c.calc,
+            value: c.value,
+            sortOrder: i,
+          })),
+        },
+      },
     });
   }
 
   async get(orgId: string, productId: string) {
     const product = await this.load(this.prisma.client, orgId, productId);
     if (!product) throw new NotFoundException('Producto no encontrado');
-    return product;
+
+    const recipe = product.recipes[0] ?? null;
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      rubro: product.rubro,
+      description: product.description,
+      currency: product.currency,
+      status: product.status,
+      targetPrice: product.targetPrice ? product.targetPrice.toNumber() : null,
+      targetMarginPct: product.targetMarginPct ? product.targetMarginPct.toNumber() : null,
+      createdAt: product.createdAt.toISOString(),
+      updatedAt: product.updatedAt.toISOString(),
+      recipe: recipe
+        ? {
+            id: recipe.id,
+            version: recipe.version,
+            outputQuantity: recipe.outputQuantity.toNumber(),
+            outputUnit: recipe.outputUnit,
+            laborMinutes: recipe.laborMinutes ? recipe.laborMinutes.toNumber() : null,
+            lines: recipe.lines.map((l) => ({
+              id: l.id,
+              orgInputId: l.orgInputId,
+              displayName: l.orgInput.displayName,
+              canonicalInputId: l.orgInput.canonicalInputId,
+              quantity: l.quantity.toNumber(),
+              unit: l.unit,
+              wastePct: l.wastePct.toNumber(),
+              unitCostOverride: l.unitCostOverride ? l.unitCostOverride.toNumber() : null,
+              lastKnownPrice: l.orgInput.lastKnownPrice ? l.orgInput.lastKnownPrice.toNumber() : null,
+            })),
+            components: recipe.costComponents.map((c) => ({
+              id: c.id,
+              type: c.type,
+              label: c.label,
+              calc: c.calc,
+              value: c.value.toNumber(),
+            })),
+          }
+        : null,
+    };
+  }
+
+  /** Lista para el dashboard. Sin costear cada fila (caro): solo metadatos. */
+  async list(orgId: string) {
+    const rows = await this.prisma.client.product.findMany({
+      where: { organizationId: orgId, archivedAt: null },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        rubro: true,
+        currency: true,
+        status: true,
+        targetPrice: true,
+        targetMarginPct: true,
+        updatedAt: true,
+        recipes: {
+          where: { isActive: true },
+          select: { _count: { select: { lines: true } } },
+          take: 1,
+        },
+      },
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      rubro: r.rubro,
+      currency: r.currency,
+      status: r.status,
+      targetPrice: r.targetPrice ? r.targetPrice.toNumber() : null,
+      targetMarginPct: r.targetMarginPct ? r.targetMarginPct.toNumber() : null,
+      updatedAt: r.updatedAt.toISOString(),
+      lineCount: r.recipes[0]?._count.lines ?? 0,
+    }));
   }
 
   // ---------------------------------------------------------------------------

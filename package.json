@@ -21,6 +21,8 @@
     "db:deploy": "pnpm --filter @fijaprecio/db migrate:deploy",
     "db:seed": "pnpm --filter @fijaprecio/db seed",
     "db:studio": "pnpm --filter @fijaprecio/db studio",
+    "db:rls:setup": "pnpm --filter @fijaprecio/db rls:setup",
+    "db:rls:check": "pnpm --filter @fijaprecio/db rls:check",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down"
   },

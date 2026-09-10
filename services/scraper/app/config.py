@@ -1,8 +1,9 @@
 """Configuración del servicio, validada al importar (pydantic-settings).
 
 Mismo principio que las apps Node: si falta una variable requerida, la app
-no arranca. Nada de parámetros de negocio aquí — la config de cada fuente de
-scraping vive en la tabla `ScrapingSource` de Postgres.
+no arranca. Los parámetros de NEGOCIO (umbral de recorte de outliers, cadencia,
+top-N, selectores por retailer) viven en `AppSetting` / `ScrapingSource` de
+Postgres — aquí solo hay infra y credenciales.
 """
 
 from functools import lru_cache
@@ -17,23 +18,36 @@ class Settings(BaseSettings):
     env: str = Field("production", alias="NODE_ENV")
     port: int = Field(8000, alias="PORT")
 
-    # API core para ingestar observaciones (red privada de Railway)
+    # API core para ingestar observaciones y leer targets (red privada de Railway)
     api_url: HttpUrl = Field(..., alias="API_URL")
     internal_api_token: str = Field(..., alias="INTERNAL_API_TOKEN", min_length=32)
 
-    # DB de solo lectura para leer ScrapingSource / cola de trabajos (opcional:
-    # también puede consultarse vía la API core).
-    database_url: str | None = Field(None, alias="DATABASE_URL")
+    # DB de solo lectura: ScrapingSource, AppSetting, UnitConversion
+    database_url: str = Field(..., alias="DATABASE_URL")
 
-    # Proxies rotativos (se activan por fuente; el endpoint y la key viven aquí)
+    # Proxies rotativos (se activan por fuente; endpoint + key aquí)
     proxy_url: str | None = Field(None, alias="SCRAPER_PROXY_URL")
+
+    # Token de la API de MercadoLibre (opcional; sin él, el search puede dar 401)
+    mercadolibre_access_token: str | None = Field(None, alias="MERCADOLIBRE_ACCESS_TOKEN")
+
+    # --- operativos (no de negocio) ---
+    default_region: str = Field("PE", alias="SCRAPER_DEFAULT_REGION")
+    default_currency: str = Field("PEN", alias="DEFAULT_CURRENCY")
+    sweep_interval_minutes: int = Field(360, alias="SCRAPER_SWEEP_INTERVAL_MINUTES")
+    targets_per_run: int = Field(50, alias="SCRAPER_TARGETS_PER_RUN")
+    request_timeout_seconds: float = Field(20.0, alias="SCRAPER_REQUEST_TIMEOUT_SECONDS")
+    user_agent: str = Field(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/128.0 Safari/537.36",
+        alias="SCRAPER_USER_AGENT",
+    )
 
     log_level: str = Field("info", alias="LOG_LEVEL")
     sentry_dsn: str | None = Field(None, alias="SENTRY_DSN")
-
     scheduler_enabled: bool = Field(True, alias="SCRAPER_SCHEDULER_ENABLED")
 
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]
+    return Settings()

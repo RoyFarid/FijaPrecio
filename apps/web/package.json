@@ -8,26 +8,36 @@
     "build": "next build",
     "start": "next start -p ${PORT:-3000}",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "next lint",
+    "lint": "eslint src",
+    "test": "vitest run",
     "clean": "rimraf .next .turbo"
   },
   "dependencies": {
     "@fijaprecio/config-schema": "workspace:*",
     "@fijaprecio/shared-types": "workspace:*",
+    "@hookform/resolvers": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "next": "catalog:",
+    "next-intl": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-hook-form": "catalog:",
+    "recharts": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "catalog:",
     "@fijaprecio/eslint-config": "workspace:*",
     "@fijaprecio/tsconfig": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",
     "eslint-config-next": "catalog:",
     "rimraf": "catalog:",
-    "typescript": "catalog:"
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

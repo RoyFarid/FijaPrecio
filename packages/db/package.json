@@ -23,6 +23,8 @@
     "migrate:reset": "dotenv -e ../../.env -- prisma migrate reset",
     "seed": "dotenv -e ../../.env -- prisma db seed",
     "studio": "dotenv -e ../../.env -- prisma studio",
+    "rls:setup": "dotenv -e ../../.env -- tsx scripts/rls-setup.ts",
+    "rls:check": "dotenv -e ../../.env -- tsx scripts/rls-check.ts",
     "lint": "eslint src",
     "clean": "rimraf dist .turbo generated *.tsbuildinfo"
   },

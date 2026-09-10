@@ -122,7 +122,7 @@ rollback del deploy sin romper el esquema.
 | **Decimal, nunca Float** | Dinero y cantidades exactas. `Decimal(14,4)` precios, `Decimal(16,6)` cantidades, `Decimal(18,8)` tasas. |
 | **Porcentajes como fracción 0..1** | `marginPct = 0.30`. Evita ambigüedad "¿30 o 0.30?" en toda la app. |
 | **`organizationId` en toda entidad de negocio** | Multi-tenancy. Entidades globales (catálogo canónico, planes, settings globales, scraping sources, tasas) no lo llevan. |
-| **RLS opcional además del scoping de app** | Defensa en profundidad. El scoping primario lo hace NestJS; RLS te salva de un `where` olvidado. |
+| **RLS además del scoping de app** | Defensa en profundidad. El scoping primario lo hace NestJS; RLS te salva de un `where` olvidado. Requiere el rol `fijaprecio_app` NOBYPASSRLS — ver §4b. |
 | **`PriceObservation` nunca se borra** | Se marca `REJECTED` con `rejectionReason`. Auditable y reversible: si el algoritmo de consenso cambia, se puede reprocesar. |
 | **`PriceConsensus` es tabla, no vista materializada** | El worker hace `upsert` incremental al llegar cada observación (no un `REFRESH` completo). Más barato a escala. |
 | **`CostingSnapshot.configUsed`** | Guarda la config efectiva del cálculo (IGV, margen, método de overhead). Un snapshot viejo se puede reproducir aunque la config global haya cambiado. |
@@ -132,6 +132,52 @@ rollback del deploy sin romper el esquema.
 | **`@@unique([source, sourceRef])` en observaciones** | Idempotencia de la ingesta batch del scraper (los `NULL` de `sourceRef` para entradas manuales no colisionan entre sí en Postgres). |
 | **`citext` para emails** | Unicidad y lookups case-insensitive sin `lower()` por todos lados. |
 | **Índices GIN `gin_trgm_ops`** | Autocompletado y fuzzy-match de insumos (`similarity()`, `ILIKE`) sobre `normalizedName` / `normalizedAlias`. |
+
+## 4b. RLS — activar el filtrado real
+
+Las políticas RLS existen desde `20260907235300_manual_*` (`FORCE ROW LEVEL
+SECURITY` + `tenant_isolation` en 21 tablas de tenant, usando
+`current_setting('app.current_org')` / `app.bypass_rls`). **Pero el rol dueño
+—superusuario en local y en Railway— hace BYPASS de RLS aunque esté FORCE**, así
+que hoy RLS no filtra nada. El aislamiento real lo da el `where: { organizationId }`
+de cada query (defensa primaria); RLS es la red de seguridad.
+
+Para activarla:
+
+```bash
+# 1. crea el rol NOBYPASSRLS (migración; NOLOGIN)
+cd packages/db && pnpm exec dotenv -e ../../.env -- prisma migrate deploy
+
+# 2. dale LOGIN + contraseña (local: 'fijaprecio_app')
+pnpm --filter @fijaprecio/db rls:setup           # o: APP_DB_PASSWORD=xxx ...
+
+# 3. verifica que filtra
+pnpm --filter @fijaprecio/db rls:check
+
+# 4. en .env:  DB_RLS_ENFORCED=true   (APP_DATABASE_URL ya apunta al rol)
+```
+
+Con `DB_RLS_ENFORCED=true` (+ `APP_DATABASE_URL`) la **API** conecta como
+`fijaprecio_app` y monta la extensión Prisma `rls`
+(`apps/api/src/prisma/rls.extension.ts`): cada op de modelo se envuelve en una tx
+que fija `app.current_org` o `app.bypass_rls` según el `OrgContext` que pone
+`JwtAuthGuard` (`tenant` para requests autenticadas, `system` para rutas
+`@Public()` marcadas `@RlsSystem()`). Transacciones interactivas y `$queryRaw`
+sobre tablas de tenant van por `PrismaService.withRls(fn, orgId?)` /
+`asSystem(fn)` (usan el cliente base sin la extensión, bajo `rlsReentry`). El
+`worker` y el `bot` siguen conectando como el dueño (son actores de sistema).
+
+> **Servicios ya migrados** (`auth.register`→`asSystem`, `products.create`→
+> `withRls`, `scrapeTargets`/`radarTargets` raw→`asSystem`, controladores
+> internos con `@RlsSystem()`). Build/typecheck/lint/test verdes. **Falta
+> probarlo con Postgres arriba** (Docker) antes de poner `DB_RLS_ENFORCED=true`.
+>
+> En Railway: crear el rol con las credenciales del owner
+> (`ALTER ROLE fijaprecio_app WITH LOGIN PASSWORD '<secreto>'`) y pasar
+> `APP_DATABASE_URL` con ese usuario.
+>
+> **Aplicar `rls_app_role` con `migrate deploy`, no `migrate dev`** — `migrate dev`
+> vuelve a generar los `DROP CONSTRAINT` de las FKs sueltas (ver 3.).
 
 ## 5. Cómo se resuelve un valor de configuración (Nivel 2 del "cero hardcodeo")
 

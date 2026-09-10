@@ -148,6 +148,8 @@ async function seedGlobalSettings() {
     },
     'consensus.confidence_min_to_show': 0.4,
     'consensus.notify_change_pct': 0.1, // avisar si el consenso se mueve >10%
+    'consensus.reputation_full_weight_at': 500, // reputación para llegar al peso máximo
+    'consensus.confidence_weights': { size: 0.4, dispersion: 0.35, diversity: 0.25 },
 
     // Reputación de aportantes
     'reputation.points': {
@@ -160,6 +162,7 @@ async function seedGlobalSettings() {
 
     // Catálogo / matching
     'catalog.match_min_similarity': 0.35,
+    'catalog.match_auto_assign_similarity': 0.62,
     'catalog.autocreate_canonical_status': 'PENDING_REVIEW',
 
     // Scraping
@@ -170,7 +173,8 @@ async function seedGlobalSettings() {
 
     // Boletas / OCR
     'receipts.retention_days': 365,
-    'ocr.provider_by_plan': { FREE: 'PADDLE', PREMIUM: 'PADDLE', BUSINESS: 'PADDLE' },
+    // TESSERACT hasta que se despliegue una imagen con el extra `paddle`.
+    'ocr.provider_by_plan': { FREE: 'TESSERACT', PREMIUM: 'TESSERACT', BUSINESS: 'TESSERACT' },
     'ocr.min_line_confidence': 0.55,
 
     // Unidades válidas (la validación de entrada las lee de aquí)
@@ -187,6 +191,7 @@ async function seedGlobalSettings() {
     // Alertas
     'alerts.check_cron': '0 * * * *',
     'alerts.digest_cron_free': '0 13 * * *',
+    'notify.dedup_hours': 24, // una alerta no se repite antes de N horas
   };
 
   for (const [key, value] of Object.entries(settings)) {
@@ -358,26 +363,34 @@ async function seedCategories() {
 // --- 7. Plantillas de notificación ---------------------------------------
 
 async function seedNotificationTemplates() {
-  const templates = [
-    {
-      code: 'alert.margin_drop',
-      channel: 'EMAIL' as const,
+  const CHANNELS = ['IN_APP', 'EMAIL', 'TELEGRAM'] as const;
+
+  const bodies: Record<string, { subject: string; body: string }> = {
+    'alert.margin_drop': {
       subject: 'Tu margen en {{productName}} bajó a {{marginPct}}',
-      body: 'El costo de {{driverInput}} subió. Tu margen pasó de {{prevMarginPct}} a {{marginPct}}. Sugerimos precio {{suggestedPrice}}.',
+      body: 'El margen de {{productName}} es {{marginPct}} (tu piso: {{marginFloorPct}}). Precio sugerido: {{suggestedPrice}}.',
     },
-    {
-      code: 'alert.margin_drop',
-      channel: 'IN_APP' as const,
-      subject: null,
-      body: 'Margen de {{productName}}: {{marginPct}} (antes {{prevMarginPct}}).',
+    'alert.input_price_rise': {
+      subject: '{{inputName}} subió en el mercado',
+      body: 'El mercado reporta {{inputName}} a {{marketPrice}}, {{changePct}} por encima de lo que pagas ({{yourPrice}}).',
     },
-    {
-      code: 'receipt.parsed',
-      channel: 'TELEGRAM' as const,
-      subject: null,
+    'alert.competitor_price_drop': {
+      subject: 'La competencia bajó el precio de {{productName}}',
+      body: 'La mediana de mercado de {{productName}} pasó de {{previousMedian}} a {{currentMedian}} ({{changePct}}).',
+    },
+    'alert.consensus_shift': {
+      subject: 'El precio de consenso de {{inputName}} se movió',
+      body: 'El consenso de {{inputName}} cambió {{changePct}} (ahora {{marketPrice}}).',
+    },
+    'receipt.parsed': {
+      subject: 'Boleta procesada',
       body: 'Detecté {{itemCount}} ítems en tu boleta. Revisa y confirma en la app.',
     },
-  ];
+  };
+
+  const templates = Object.entries(bodies).flatMap(([code, t]) =>
+    CHANNELS.map((channel) => ({ code, channel, subject: t.subject, body: t.body })),
+  );
   for (const t of templates) {
     await prisma.notificationTemplate.upsert({
       where: { code_locale_channel: { code: t.code, locale: 'es-PE', channel: t.channel } },

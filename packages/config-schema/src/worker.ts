@@ -21,6 +21,16 @@ export const workerEnvSchema = z
     WORKER_HEALTH_PORT: zInt.default(3010),
     WORKER_CONCURRENCY: zInt.default(5),
 
+    // Cada cuánto el worker barre y re-encola recálculos de consenso.
+    CONSENSUS_SWEEP_INTERVAL_MINUTES: zInt.default(30),
+    // Cada cuánto el worker envía las notificaciones PENDING.
+    NOTIFICATIONS_POLL_MINUTES: zInt.default(2),
+
+    // API core (para /internal/catalog/match y /internal/receipts/:id/confirm)
+    API_URL: z.string().url(),
+    // Bot (para notificar el resumen de una boleta parseada). Opcional en local.
+    BOT_INTERNAL_URL: zOptional(z.string().url()),
+
     RESEND_API_KEY: zOptional(z.string()),
     EMAIL_FROM: z.string().default('FijaPrecio <no-reply@fijaprecio.local>'),
   })

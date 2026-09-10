@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { zCsv, zInt, zOptional, zSecret } from './parse-env.js';
+import { zBool, zCsv, zInt, zOptional, zSecret } from './parse-env.js';
 
 /** Bloques reutilizables por varios servicios. */
 
@@ -10,7 +10,12 @@ export const logLevel = z
   .default('info');
 
 export const database = z.object({
+  // Rol dueño (DDL, seed, servicios de sistema).
   DATABASE_URL: z.string().url().startsWith('postgres'),
+  // Rol NOBYPASSRLS `fijaprecio_app` para la API cuando DB_RLS_ENFORCED=true.
+  APP_DATABASE_URL: zOptional(z.string().url().startsWith('postgres')),
+  // Si true (y hay APP_DATABASE_URL), la API conecta con el rol de app y RLS filtra.
+  DB_RLS_ENFORCED: zBool.default(false),
 });
 
 export const redis = z.object({

@@ -34,7 +34,7 @@ export default function ProductDetailPage() {
     <div className="space-y-6">
       <Link
         href="/products"
-        className="inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg"
+        className="inline-flex items-center gap-1.5 text-[13px] text-fg-muted hover:text-fg"
       >
         <IconArrowLeft className="size-4" />
         {tf('back')}

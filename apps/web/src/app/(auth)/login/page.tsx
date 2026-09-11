@@ -10,7 +10,6 @@ import { apiFetch, ApiError } from '../../../lib/api';
 import { loginFormSchema, type LoginForm } from '../../../lib/schemas';
 import { applyApiIssues, safeNextPath } from '../../../lib/form-errors';
 import type { AuthResponse } from '../../../lib/types';
-import { Card, CardBody } from '../../../components/ui/card';
 import { Field } from '../../../components/ui/field';
 import { Button } from '../../../components/ui/button';
 import { Callout } from '../../../components/ui/callout';
@@ -56,42 +55,40 @@ function LoginForm() {
   });
 
   return (
-    <Card>
-      <CardBody className="space-y-5">
-        <div>
-          <h1 className="text-base font-semibold">{t('loginTitle')}</h1>
-          <p className="mt-1 text-sm text-fg-muted">{t('loginSubtitle')}</p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-[22px] font-bold tracking-tight">{t('loginTitle')}</h1>
+        <p className="mt-1.5 text-[13px] text-fg-muted">{t('loginSubtitle')}</p>
+      </div>
 
-        {formError ? <Callout tone="danger">{formError}</Callout> : null}
+      {formError ? <Callout tone="danger">{formError}</Callout> : null}
 
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <Field
-            label={t('email')}
-            type="email"
-            autoComplete="email"
-            autoFocus
-            error={errors.email?.message}
-            {...register('email')}
-          />
-          <Field
-            label={t('password')}
-            type="password"
-            autoComplete="current-password"
-            error={errors.password?.message}
-            {...register('password')}
-          />
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {t('submitLogin')}
-          </Button>
-        </form>
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <Field
+          label={t('email')}
+          type="email"
+          autoComplete="email"
+          autoFocus
+          error={errors.email?.message}
+          {...register('email')}
+        />
+        <Field
+          label={t('password')}
+          type="password"
+          autoComplete="current-password"
+          error={errors.password?.message}
+          {...register('password')}
+        />
+        <Button type="submit" className="h-11 w-full" disabled={isSubmitting}>
+          {t('submitLogin')}
+        </Button>
+      </form>
 
-        <p className="text-center text-sm text-fg-muted">
-          <Link href="/register" className="font-medium text-brand-strong hover:underline">
-            {t('toRegister')}
-          </Link>
-        </p>
-      </CardBody>
-    </Card>
+      <p className="text-center text-[13px] text-fg-muted">
+        <Link href="/register" className="font-semibold text-brand-strong hover:underline">
+          {t('toRegister')}
+        </Link>
+      </p>
+    </div>
   );
 }

@@ -20,7 +20,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(funct
   return (
     <div className="space-y-1.5">
       {label ? (
-        <label htmlFor={selectId} className="block text-sm font-medium text-fg">
+        <label htmlFor={selectId} className="block text-[13px] font-semibold text-fg">
           {label}
         </label>
       ) : null}

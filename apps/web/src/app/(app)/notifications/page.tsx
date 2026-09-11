@@ -20,8 +20,8 @@ export default function NotificationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">{t('title')}</h1>
-          <p className="mt-1 text-sm text-fg-muted">{t('unreadCount', { count })}</p>
+          <h1 className="text-[26px] font-bold tracking-tight">{t('title')}</h1>
+          <p className="mt-1.5 text-[13px] text-fg-muted">{t('unreadCount', { count })}</p>
         </div>
         {count > 0 ? (
           <Button
@@ -44,21 +44,21 @@ export default function NotificationsPage() {
             onRetry={() => void list.refetch()}
           >
             {!list.data || list.data.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-fg-muted">{t('empty')}</p>
+              <p className="px-6 py-12 text-center text-[13px] text-fg-muted">{t('empty')}</p>
             ) : (
               <ul className="divide-y divide-border">
                 {list.data.map((n) => (
                   <li
                     key={n.id}
-                    className={cn('px-5 py-4', !n.readAt && 'bg-brand-soft/30')}
+                    className={cn('px-6 py-4', !n.readAt && 'bg-brand-soft/30')}
                   >
                     <div className="flex items-baseline justify-between gap-3">
-                      <p className="text-sm font-medium text-fg">{n.title}</p>
-                      <span className="shrink-0 text-xs text-fg-subtle">
+                      <p className="text-[13.5px] font-semibold text-fg">{n.title}</p>
+                      <span className="shrink-0 text-[11px] text-fg-subtle">
                         {formatRelative(n.createdAt)}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-fg-muted">{n.body}</p>
+                    <p className="mt-1 text-[13px] text-fg-muted">{n.body}</p>
                     {!n.readAt ? (
                       <Badge tone="brand" className="mt-2">
                         {t('new')}

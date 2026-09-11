@@ -15,7 +15,7 @@ export function Tabs({ tabs, initial }: { tabs: TabDef[]; initial?: string }) {
 
   return (
     <div>
-      <div role="tablist" className="flex gap-1 border-b border-border">
+      <div role="tablist" className="flex gap-6 border-b border-border">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -24,17 +24,17 @@ export function Tabs({ tabs, initial }: { tabs: TabDef[]; initial?: string }) {
             aria-selected={tab.id === current?.id}
             onClick={() => setActive(tab.id)}
             className={cn(
-              '-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+              '-mb-px border-b-2 pb-2.5 pt-1 text-[14px] font-semibold transition-colors',
               tab.id === current?.id
                 ? 'border-brand text-fg'
-                : 'border-transparent text-fg-muted hover:text-fg',
+                : 'border-transparent text-fg-subtle hover:text-fg',
             )}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      <div role="tabpanel" className="pt-5">
+      <div role="tabpanel" className="pt-6">
         {current?.content}
       </div>
     </div>

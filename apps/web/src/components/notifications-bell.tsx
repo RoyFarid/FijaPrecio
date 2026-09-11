@@ -40,7 +40,7 @@ export function NotificationsBell() {
         onClick={() => setOpen((v) => !v)}
         aria-label={t('open')}
         aria-expanded={open}
-        className="relative grid size-9 place-items-center rounded-md text-fg-muted hover:bg-surface-muted hover:text-fg"
+        className="relative grid size-9 place-items-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-fg"
       >
         <IconBell />
         {count > 0 ? (
@@ -51,7 +51,7 @@ export function NotificationsBell() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+        <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-2xl border border-border bg-surface shadow-xl shadow-fg/10">
           <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <span className="text-sm font-semibold">{t('title')}</span>
             {count > 0 ? (
@@ -94,7 +94,7 @@ export function NotificationsBell() {
             onClick={() => setOpen(false)}
             className="block border-t border-border px-4 py-2.5 text-center text-sm font-medium text-brand-strong hover:bg-surface-muted"
           >
-            {t('title')}
+            {t('seeAll')}
           </Link>
         </div>
       ) : null}

@@ -2,35 +2,39 @@
 
 /*
  * Tema FijaPrecio (Tailwind v4 — tokens aquí, sin `tailwind.config`).
- * Paleta: pizarra neutra + acento esmeralda (dinero / señal positiva).
+ * Reskin: papel tibio + tinta, un solo acento MIEL (el color del valor / comercio).
+ * Verde = lo que sube (margen, precio de valor) · arcilla = lo que cae.
+ * Una sola tipografía (Hanken Grotesk); los "momentos grandes" son la misma en bold.
  */
 @theme {
-  --color-bg: oklch(0.99 0.004 250);
-  --color-surface: oklch(1 0 0);
-  --color-surface-muted: oklch(0.97 0.005 250);
-  --color-border: oklch(0.92 0.006 250);
-  --color-fg: oklch(0.26 0.02 260);
-  --color-fg-muted: oklch(0.52 0.02 260);
-  --color-fg-subtle: oklch(0.62 0.015 260);
+  --color-bg: oklch(0.985 0.007 83); /* papel */
+  --color-surface: oklch(0.998 0.003 83);
+  --color-surface-muted: oklch(0.963 0.011 82); /* hundido */
+  --color-border: oklch(0.905 0.012 78);
 
-  --color-brand: oklch(0.62 0.14 165);
-  --color-brand-fg: oklch(0.99 0.01 165);
-  --color-brand-strong: oklch(0.52 0.13 165);
-  --color-brand-soft: oklch(0.95 0.03 165);
+  --color-fg: oklch(0.265 0.019 64); /* tinta */
+  --color-fg-muted: oklch(0.45 0.016 66);
+  --color-fg-subtle: oklch(0.585 0.014 70);
 
-  --color-danger: oklch(0.58 0.2 25);
-  --color-danger-soft: oklch(0.96 0.03 25);
-  --color-warning: oklch(0.75 0.15 75);
-  --color-warning-soft: oklch(0.96 0.04 75);
-  --color-success: oklch(0.62 0.14 165);
-  --color-success-soft: oklch(0.95 0.03 165);
+  --color-brand: oklch(0.75 0.125 78); /* miel */
+  --color-brand-fg: oklch(0.27 0.03 70); /* texto sobre miel (poco frecuente) */
+  --color-brand-strong: oklch(0.53 0.13 66); /* miel-tinta: acento sobre papel */
+  --color-brand-soft: oklch(0.945 0.05 82); /* miel lavado */
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --color-danger: oklch(0.56 0.14 32); /* arcilla */
+  --color-danger-soft: oklch(0.95 0.04 34);
+  --color-warning: oklch(0.72 0.115 68); /* ocre — distinto de la miel */
+  --color-warning-soft: oklch(0.955 0.042 72);
+  --color-success: oklch(0.58 0.11 158); /* verde: sube */
+  --color-success-soft: oklch(0.95 0.035 158);
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
 
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    var(--font-hanken), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
 }
 
 @layer base {
@@ -47,6 +51,7 @@
   body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   * {
@@ -55,6 +60,12 @@
 
   a {
     color: inherit;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.012em;
   }
 
   :focus-visible {

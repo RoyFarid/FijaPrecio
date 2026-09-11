@@ -1,13 +1,16 @@
 import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
-export const inputClasses = cn(
-  'h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-fg',
+/** Estilo base sin altura — quien lo use fija la suya (`inputClasses` = altura estándar). */
+export const inputBase = cn(
+  'w-full rounded-lg border border-border bg-surface px-3.5 text-[13.5px] text-fg',
   'placeholder:text-fg-subtle',
-  'focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30',
+  'focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand-soft',
   'disabled:cursor-not-allowed disabled:opacity-70',
-  'aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger/25',
+  'aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger/20',
 );
+
+export const inputClasses = cn(inputBase, 'h-11');
 
 export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: ReactNode;
@@ -25,7 +28,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={inputId} className="block text-sm font-medium text-fg">
+      <label htmlFor={inputId} className="block text-[13px] font-semibold text-fg">
         {label}
       </label>
       <input

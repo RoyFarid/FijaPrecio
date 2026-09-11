@@ -21,12 +21,12 @@ export default function EditProductPage() {
       <div>
         <Link
           href={`/products/${id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg"
+          className="inline-flex items-center gap-1.5 text-[13px] text-fg-muted hover:text-fg"
         >
           <IconArrowLeft className="size-4" />
           {t('backToProduct')}
         </Link>
-        <h1 className="mt-2 text-xl font-semibold tracking-tight">{t('editTitle')}</h1>
+        <h1 className="mt-2 text-[26px] font-bold tracking-tight">{t('editTitle')}</h1>
       </div>
 
       <QueryBoundary

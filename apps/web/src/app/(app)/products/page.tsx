@@ -45,23 +45,23 @@ export default function ProductsPage() {
           <Card>
             <CardBody flush>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-[13.5px]">
                   <thead>
-                    <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-subtle">
-                      <th className="px-4 py-2.5 font-semibold">{t('colName')}</th>
-                      <th className="px-4 py-2.5 font-semibold">{t('colRubro')}</th>
-                      <th className="px-4 py-2.5 font-semibold">{t('colLines')}</th>
-                      <th className="px-4 py-2.5 text-right font-semibold">{t('colTarget')}</th>
-                      <th className="px-4 py-2.5 font-semibold">{t('colUpdated')}</th>
+                    <tr className="border-b border-border text-left text-[10.5px] font-bold uppercase tracking-[0.07em] text-fg-subtle">
+                      <th className="px-5 py-3 font-bold">{t('colName')}</th>
+                      <th className="px-5 py-3 font-bold">{t('colRubro')}</th>
+                      <th className="px-5 py-3 font-bold">{t('colLines')}</th>
+                      <th className="px-5 py-3 text-right font-bold">{t('colTarget')}</th>
+                      <th className="px-5 py-3 font-bold">{t('colUpdated')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {products.data.map((p) => (
-                      <tr key={p.id} className="hover:bg-surface-muted/50">
-                        <td className="px-4 py-3">
+                      <tr key={p.id} className="transition-colors hover:bg-surface-muted/50">
+                        <td className="px-5 py-3.5">
                           <Link
                             href={`/products/${p.id}`}
-                            className="font-medium text-fg hover:text-brand-strong"
+                            className="font-semibold text-fg hover:text-brand-strong"
                           >
                             {p.name}
                           </Link>
@@ -69,14 +69,14 @@ export default function ProductsPage() {
                             <StatusBadge status={p.status} />
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-fg-muted">{p.rubro ?? '—'}</td>
-                        <td className="px-4 py-3 text-fg-muted">
+                        <td className="px-5 py-3.5 text-fg-muted">{p.rubro ?? '—'}</td>
+                        <td className="px-5 py-3.5 text-fg-muted">
                           {t('lineCount', { count: p.lineCount })}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
+                        <td className="px-5 py-3.5 text-right tabular-nums">
                           {formatMoney(p.targetPrice, p.currency)}
                         </td>
-                        <td className="px-4 py-3 text-fg-subtle">{formatRelative(p.updatedAt)}</td>
+                        <td className="px-5 py-3.5 text-fg-subtle">{formatRelative(p.updatedAt)}</td>
                       </tr>
                     ))}
                   </tbody>

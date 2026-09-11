@@ -5,21 +5,21 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-brand text-brand-fg hover:bg-brand-strong disabled:bg-brand/50',
+  primary: 'bg-fg text-bg hover:bg-fg/90',
   secondary: 'bg-surface text-fg border border-border hover:bg-surface-muted',
   ghost: 'text-fg-muted hover:bg-surface-muted hover:text-fg',
   danger: 'bg-danger text-white hover:opacity-90',
 };
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-8 px-3 text-sm',
-  md: 'h-10 px-4 text-sm',
+  sm: 'h-9 px-3.5 text-[13px]',
+  md: 'h-10 px-5 text-[13.5px]',
 };
 
 export function buttonClasses(variant: Variant = 'primary', size: Size = 'md'): string {
   return cn(
-    'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors',
-    'disabled:cursor-not-allowed disabled:opacity-70',
+    'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors',
+    'disabled:cursor-not-allowed disabled:opacity-60',
     VARIANTS[variant],
     SIZES[size],
   );

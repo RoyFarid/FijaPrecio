@@ -41,7 +41,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-20 mt-2 w-60 overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+        <div className="absolute right-0 z-20 mt-2 w-60 overflow-hidden rounded-2xl border border-border bg-surface shadow-xl shadow-fg/10">
           <div className="border-b border-border px-4 py-3">
             <p className="truncate text-sm font-medium text-fg">{user.name}</p>
             <p className="truncate text-xs text-fg-muted">{user.email}</p>

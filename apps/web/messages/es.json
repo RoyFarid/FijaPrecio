@@ -1,7 +1,8 @@
 {
   "brand": {
     "name": "FijaPrecio",
-    "tagline": "A cuánto vender: tu costo real vs. el precio de mercado en vivo."
+    "tagline": "A cuánto vender, sin adivinar.",
+    "pitch": "Cruza tu costo real —insumos, mano de obra, gastos— con el precio de mercado en vivo. Te decimos el precio y qué recortar."
   },
   "common": {
     "loading": "Cargando…",
@@ -37,6 +38,9 @@
     "loginSubtitle": "Gestiona el costeo y los precios de tu negocio.",
     "registerTitle": "Crea tu cuenta",
     "registerSubtitle": "Empieza a costear y a comparar precios en minutos.",
+    "featCosting": "Costeo bottom-up con precios de mercado",
+    "featRadar": "Radar de competencia por producto",
+    "featAlerts": "Alertas cuando el margen se te escapa",
     "email": "Correo electrónico",
     "password": "Contraseña",
     "name": "Tu nombre",
@@ -193,7 +197,9 @@
     "costGap": "Brecha de costo",
     "costGapHint": "Cuánto debe bajar el costo unitario para alcanzar tu meta.",
     "onTarget": "Ya estás dentro de la meta.",
-    "breakdown": "Desglose del costo unitario",
+    "breakdown": "Qué compone tu costo unitario",
+    "breakdownHint": "Cada barra es un insumo o costo. El color dice de dónde salió el precio.",
+    "otherCosts": "Otros costos",
     "colConcept": "Concepto",
     "colSource": "Precio",
     "colAmount": "Aporte",
@@ -355,7 +361,8 @@
     "empty": "No tienes notificaciones.",
     "markAllRead": "Marcar todo como leído",
     "unreadCount": "{count, plural, =0 {Sin notificaciones nuevas} one {# notificación nueva} other {# notificaciones nuevas}}",
-    "open": "Abrir notificaciones"
+    "open": "Abrir notificaciones",
+    "seeAll": "Ver todas"
   },
   "state": {
     "loadError": "No pudimos cargar esta sección.",

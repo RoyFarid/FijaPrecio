@@ -42,9 +42,11 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
   );
 
   const cls = cn(
-    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-    active ? 'bg-brand-soft text-brand-strong' : 'text-fg-muted hover:bg-surface-muted hover:text-fg',
-    !item.ready && 'cursor-not-allowed opacity-60 hover:bg-transparent hover:text-fg-muted',
+    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] transition-colors',
+    active
+      ? 'bg-brand-soft font-semibold text-brand-strong'
+      : 'font-medium text-fg-muted hover:bg-surface-muted hover:text-fg',
+    !item.ready && 'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-fg-muted',
   );
 
   if (!item.ready) {
@@ -69,7 +71,7 @@ export function Nav() {
   return (
     <nav className="flex flex-col gap-6">
       <div className="space-y-1">
-        <p className="px-3 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+        <p className="px-3 pb-1 text-[10.5px] font-bold uppercase tracking-[0.09em] text-fg-subtle">
           {t('sectionMain')}
         </p>
         {MAIN.map((item) => (
@@ -77,7 +79,7 @@ export function Nav() {
         ))}
       </div>
       <div className="space-y-1">
-        <p className="px-3 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+        <p className="px-3 pb-1 text-[10.5px] font-bold uppercase tracking-[0.09em] text-fg-subtle">
           {t('sectionAccount')}
         </p>
         {ACCOUNT.map((item) => (

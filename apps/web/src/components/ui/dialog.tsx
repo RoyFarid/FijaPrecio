@@ -32,17 +32,17 @@ export function Dialog({
         type="button"
         aria-label="Cerrar"
         onClick={onClose}
-        className="fixed inset-0 bg-black/30"
+        className="fixed inset-0 bg-fg/30 backdrop-blur-[2px]"
       />
       <div
         role="dialog"
         aria-modal
-        className="relative z-10 w-full max-w-lg rounded-lg border border-border bg-surface shadow-xl"
+        className="relative z-10 w-full max-w-lg rounded-2xl border border-border bg-surface shadow-2xl shadow-fg/10"
       >
-        <div className="border-b border-border px-5 py-3.5">
-          <h2 className="text-sm font-semibold">{title}</h2>
+        <div className="border-b border-border px-6 py-4">
+          <h2 className="text-[15px] font-semibold">{title}</h2>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="px-6 py-5">{children}</div>
       </div>
     </div>
   );

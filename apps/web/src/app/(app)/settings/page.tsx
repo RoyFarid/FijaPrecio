@@ -36,7 +36,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight">{t('title')}</h1>
+      <h1 className="text-[26px] font-bold tracking-tight">{t('title')}</h1>
 
       <Card>
         <CardHeader title={t('account')} />

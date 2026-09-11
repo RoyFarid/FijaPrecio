@@ -13,12 +13,12 @@ export default function NewProductPage() {
       <div>
         <Link
           href="/products"
-          className="inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg"
+          className="inline-flex items-center gap-1.5 text-[13px] text-fg-muted hover:text-fg"
         >
           <IconArrowLeft className="size-4" />
           {t('back')}
         </Link>
-        <h1 className="mt-2 text-xl font-semibold tracking-tight">{t('title')}</h1>
+        <h1 className="mt-2 text-[26px] font-bold tracking-tight">{t('title')}</h1>
       </div>
       <ProductForm />
     </div>

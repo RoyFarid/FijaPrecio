@@ -57,10 +57,10 @@ export default function AlertsPage() {
             <CardBody flush>
               <ul className="divide-y divide-border">
                 {alerts.data.map((a) => (
-                  <li key={a.id} className="flex items-start gap-4 px-4 py-3">
+                  <li key={a.id} className="flex items-start gap-4 px-5 py-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-fg">{a.name}</span>
+                        <span className="text-[13.5px] font-semibold text-fg">{a.name}</span>
                         <Badge tone="neutral">{tType(a.type)}</Badge>
                         {a.channels.map((ch) => (
                           <Badge key={ch} tone="brand">
@@ -85,9 +85,8 @@ export default function AlertsPage() {
                     />
                     <button
                       type="button"
-                      aria-label={tc('delete')}
                       onClick={() => setDialog({ mode: 'edit', alert: a })}
-                      className="text-xs font-medium text-brand-strong hover:underline"
+                      className="text-[12px] font-semibold text-brand-strong hover:underline"
                     >
                       {tc('edit')}
                     </button>
@@ -97,7 +96,7 @@ export default function AlertsPage() {
                       onClick={() => {
                         if (window.confirm(tc('confirmDelete', { name: a.name }))) remove.mutate(a.id);
                       }}
-                      className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-muted hover:text-danger"
+                      className="grid size-8 place-items-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger"
                     >
                       <IconTrash className="size-4" />
                     </button>

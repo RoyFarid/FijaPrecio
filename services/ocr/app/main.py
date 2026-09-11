@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 from typing import Annotated
 
+import pytesseract
 import structlog
 from fastapi import Depends, FastAPI, Header, HTTPException
 
@@ -20,6 +21,11 @@ from app.image_source import load_image_bytes
 from app.models import OcrLineOut, OcrRequest, OcrResponse
 from app.preprocess import preprocess
 from app.providers import get_provider
+
+# Binario `tesseract` fuera del PATH (dev Windows). En la imagen Docker está en
+# el PATH → `OCR_TESSERACT_CMD` vacío y esto es no-op.
+if (_cmd := get_settings().tesseract_cmd):
+    pytesseract.pytesseract.tesseract_cmd = _cmd
 
 log = structlog.get_logger("ocr")
 app = FastAPI(title="FijaPrecio OCR")
@@ -42,8 +48,6 @@ async def health() -> dict[str, str]:
 async def ready() -> dict[str, object]:
     checks = {"tesseract": "down"}
     try:
-        import pytesseract
-
         pytesseract.get_tesseract_version()
         checks["tesseract"] = "up"
     except Exception:  # noqa: BLE001

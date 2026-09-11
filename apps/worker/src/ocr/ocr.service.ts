@@ -58,7 +58,10 @@ export class OcrService {
       );
 
       await this.persist(receiptId, parsed, ocr.provider, items);
-      await this.notifyBot(receiptId);
+      // Un aviso al bot que falla no debe perder el parseo.
+      await this.notifyBot(receiptId).catch((e: unknown) =>
+        this.log.warn(`notifyBot ${receiptId}: ${(e as Error).message}`),
+      );
 
       const matched = items.filter((it) => it.matchedCanonicalInputId).length;
       this.log.log(`boleta ${receiptId}: ${items.length} líneas, ${matched} con match`);

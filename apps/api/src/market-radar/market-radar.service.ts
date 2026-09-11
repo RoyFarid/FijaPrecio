@@ -38,6 +38,8 @@ export interface RadarTarget {
   query: string;
   region: string;
   currency: string;
+  /** Rubro del producto, para acotar qué fuentes se raspan en el radar. */
+  rubro: string | null;
 }
 
 @Injectable()
@@ -119,13 +121,22 @@ export class MarketRadarService {
   async radarTargets(limit: number): Promise<RadarTarget[]> {
     // raw + JOIN a Product/Organization (tablas de tenant) → asSystem para saltar RLS.
     const rows = await this.prisma.asSystem((tx) =>
-      tx.$queryRaw<Array<{ productId: string; query: string; region: string; currency: string }>>`
-        SELECT p.id AS "productId", p.name AS query, o.region AS region, p.currency AS currency
+      tx.$queryRaw<
+        Array<{
+          productId: string;
+          query: string;
+          region: string;
+          currency: string;
+          rubro: string | null;
+        }>
+      >`
+        SELECT p.id AS "productId", p.name AS query, o.region AS region, p.currency AS currency,
+               p.rubro AS rubro
         FROM "Product" p
         JOIN "Organization" o ON o.id = p."organizationId"
         LEFT JOIN "MarketPrice" mp ON mp."productId" = p.id
         WHERE p.status = 'ACTIVE' AND p."archivedAt" IS NULL
-        GROUP BY p.id, p.name, o.region, p.currency
+        GROUP BY p.id, p.name, o.region, p.currency, p.rubro
         ORDER BY MAX(mp."capturedAt") ASC NULLS FIRST
         LIMIT ${limit}`,
     );

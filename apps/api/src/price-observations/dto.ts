@@ -34,4 +34,6 @@ export interface ScrapeTarget {
   canonicalInputId: string;
   query: string;
   baseUnit: string;
+  /** Rubro del insumo (de su `InputCategory`) para acotar qué fuentes se raspan. */
+  rubro: string | null;
 }

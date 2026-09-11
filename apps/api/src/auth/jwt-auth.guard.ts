@@ -10,9 +10,11 @@ import { IS_PUBLIC_KEY } from './public.decorator.js';
 import { ACCESS_COOKIE } from './cookies.js';
 import { TokenService } from './token.service.js';
 import type { RequestAuth } from './auth.types.js';
-import { orgContextStorage } from '../tenancy/org-context.js';
-import { RLS_SYSTEM_KEY } from '../tenancy/rls-mode.js';
 
+/**
+ * Enforcement de sesión. El contexto RLS de tenant lo abre `OrgContextMiddleware`
+ * (antes que este guard); aquí solo se rechaza si falta o es inválido el token.
+ */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
@@ -21,17 +23,17 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const targets = [context.getHandler(), context.getClass()];
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, targets);
-    if (isPublic) {
-      // Rutas internas / auth: corren en modo sistema para RLS (bypass).
-      if (this.reflector.getAllAndOverride<boolean>(RLS_SYSTEM_KEY, targets)) {
-        orgContextStorage.enterWith({ mode: 'system' });
-      }
-      return true;
-    }
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
 
     const req = context.switchToHttp().getRequest<Request>();
+
+    // OrgContextMiddleware ya validó el token y puso `req.auth` si es válido.
+    if (req.auth) return true;
+
     const token = this.extractToken(req);
     if (!token) throw new UnauthorizedException('No autenticado');
 
@@ -42,15 +44,6 @@ export class JwtAuthGuard implements CanActivate {
       role: claims.role,
     };
     req.auth = auth;
-
-    // Abre el contexto de tenant para el resto de la ejecución de esta request.
-    orgContextStorage.enterWith({
-      mode: 'tenant',
-      userId: auth.userId,
-      organizationId: auth.organizationId,
-      role: auth.role,
-    });
-
     return true;
   }
 

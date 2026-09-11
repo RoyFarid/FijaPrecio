@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { OrgContextMiddleware } from './tenancy/org-context.middleware.js';
 import { ConfigModule } from './config/config.module.js';
 import { env } from './config/env.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -46,8 +47,11 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     AlertsModule,
     NotificationsModule,
     HealthModule,
-    // TODO: OrgModule, CatalogModule, PricingIntelligenceModule,
-    //       ReceiptsModule, MarketRadarModule, ...
   ],
+  providers: [OrgContextMiddleware],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(OrgContextMiddleware).forRoutes('{*path}');
+  }
+}

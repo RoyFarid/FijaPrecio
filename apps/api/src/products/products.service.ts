@@ -45,7 +45,8 @@ export class ProductsService {
         canonicalByName,
       });
 
-      return this.load(tx, orgId, product.id);
+      const full = await this.load(tx, orgId, product.id);
+      return this.serialize(full!);
     }, orgId);
   }
 
@@ -69,7 +70,8 @@ export class ProductsService {
       });
       if (count === 0) throw new NotFoundException('Producto no encontrado');
 
-      return this.load(tx, orgId, productId);
+      const full = await this.load(tx, orgId, productId);
+      return this.serialize(full!);
     }, orgId);
   }
 
@@ -104,7 +106,8 @@ export class ProductsService {
         canonicalByName,
       });
 
-      return this.load(tx, orgId, productId);
+      const full = await this.load(tx, orgId, productId);
+      return this.serialize(full!);
     }, orgId);
   }
 
@@ -212,7 +215,11 @@ export class ProductsService {
   async get(orgId: string, productId: string) {
     const product = await this.load(this.prisma.client, orgId, productId);
     if (!product) throw new NotFoundException('Producto no encontrado');
+    return this.serialize(product);
+  }
 
+  /** DTO limpio (Decimal→number, Date→ISO, receta activa) — lo devuelven get/create/update. */
+  private serialize(product: NonNullable<Awaited<ReturnType<ProductsService['load']>>>) {
     const recipe = product.recipes[0] ?? null;
     return {
       id: product.id,

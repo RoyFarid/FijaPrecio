@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --paper:oklch(0.985 0.007 83); --surface:oklch(0.998 0.003 83); --sunk:oklch(0.963 0.011 82);
+      --border:oklch(0.905 0.012 78); --border-2:oklch(0.84 0.016 75);
+      --ink:oklch(0.265 0.019 64); --ink-soft:oklch(0.45 0.016 66); --ink-faint:oklch(0.585 0.014 70);
+      --honey:oklch(0.75 0.125 78); --honey-ink:oklch(0.55 0.13 66); --honey-wash:oklch(0.945 0.05 82);
+      --gain:oklch(0.58 0.11 158); --loss:oklch(0.56 0.14 32);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:"Hanken Grotesk",system-ui,-apple-system,sans-serif;font-feature-settings:"tnum";-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+    h1,h2,h3{margin:0;font-weight:600}
+    .serif{font-weight:700;letter-spacing:-0.02em}
+    .num{font-variant-numeric:tabular-nums}
+    a{color:var(--honey-ink)}a:hover{color:var(--ink)}
+    .wrap{width:1200px;height:820px;display:grid;grid-template-columns:1.15fr 1fr}
+    .panel{padding:64px 60px;display:flex;flex-direction:column;justify-content:space-between}
+    .formcol{background:var(--surface);border-left:1px solid var(--border);display:flex;align-items:center;justify-content:center;padding:60px}
+    .form{width:340px;display:flex;flex-direction:column;gap:18px}
+    .field{display:flex;flex-direction:column;gap:7px}
+    .field label{font-size:12.5px;font-weight:600}
+    .in{height:44px;border:1px solid var(--border-2);border-radius:.75rem;background:var(--surface);padding:0 14px;display:flex;align-items:center;color:var(--ink-faint);font-size:13.5px}
+    .in.focus{border-color:var(--honey);box-shadow:0 0 0 3px var(--honey-wash);color:var(--ink)}
+    .btn{height:46px;border-radius:.75rem;background:var(--ink);color:var(--paper);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center}
+    .mini{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-soft)}
+    .mini .k{width:26px;height:26px;border-radius:.5rem;background:var(--honey-wash);color:var(--honey-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  </style>
+</helmet>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="serif" style="font-size:24px">FijaPrecio</div>
+
+    <div style="display:flex;flex-direction:column;gap:22px;max-width:460px">
+      <div class="serif" style="font-size:46px;line-height:1.08">A cuánto vender, sin adivinar.</div>
+      <p style="margin:0;font-size:15px;color:var(--ink-soft);line-height:1.6">Cruza tu costo real —insumos, mano de obra, gastos— con el precio de mercado en vivo. Te decimos el precio y qué insumo recortar.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:6px">
+        <div class="mini"><span class="k"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>Costeo bottom-up con precios de mercado</div>
+        <div class="mini"><span class="k"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-4-6.9"/><path d="M20 4v5h-5"/></svg></span>Radar de competencia por producto</div>
+        <div class="mini"><span class="k"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span>Alertas cuando el margen se te escapa</div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:var(--ink-faint)">Hecho para MYPES de Perú · panaderías, confección, gastronomía</div>
+  </div>
+
+  <div class="formcol">
+    <div class="form">
+      <div style="margin-bottom:6px">
+        <h1 style="font-size:22px;letter-spacing:-0.01em">Entrar a tu cuenta</h1>
+        <p style="margin:6px 0 0;font-size:13px;color:var(--ink-soft)">Gestiona el costeo y los precios de tu negocio.</p>
+      </div>
+      <div class="field"><label>Correo electrónico</label><div class="in focus">ana@panaderia.pe</div></div>
+      <div class="field"><label>Contraseña</label><div class="in">••••••••••••</div></div>
+      <div class="btn">Entrar</div>
+      <div style="text-align:center;font-size:13px;color:var(--ink-soft)"><a>¿No tienes cuenta? Regístrate</a></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

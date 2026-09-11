@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --paper:oklch(0.985 0.007 83); --surface:oklch(0.998 0.003 83); --sunk:oklch(0.963 0.011 82);
+      --border:oklch(0.905 0.012 78); --border-2:oklch(0.84 0.016 75);
+      --ink:oklch(0.265 0.019 64); --ink-soft:oklch(0.45 0.016 66); --ink-faint:oklch(0.585 0.014 70);
+      --honey:oklch(0.75 0.125 78); --honey-ink:oklch(0.55 0.13 66); --honey-wash:oklch(0.945 0.05 82);
+      --gain:oklch(0.58 0.11 158); --gain-wash:oklch(0.95 0.035 158);
+      --loss:oklch(0.56 0.14 32); --loss-wash:oklch(0.95 0.04 34);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:"Hanken Grotesk",system-ui,-apple-system,sans-serif;font-feature-settings:"tnum";-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+    h1,h2,h3{margin:0;font-weight:600;letter-spacing:-0.011em}
+    .serif{font-weight:700;letter-spacing:-0.02em}
+    a{color:var(--honey-ink)}a:hover{color:var(--ink)}
+    .num{font-variant-numeric:tabular-nums}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:1rem}
+    .lbl{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint)}
+    .sw{height:56px;border-radius:.7rem;border:1px solid rgba(0,0,0,.06)}
+    .btn{height:44px;padding:0 20px;border-radius:.75rem;font:inherit;font-weight:600;font-size:13.5px;border:1px solid transparent;display:inline-flex;align-items:center;gap:8px;cursor:default}
+    .btn-primary{background:var(--ink);color:var(--paper)}
+    .btn-secondary{background:var(--surface);border-color:var(--border-2);color:var(--ink)}
+    .btn-ghost{background:transparent;color:var(--ink-soft)}
+    .pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600}
+    .in{height:44px;border:1px solid var(--border-2);border-radius:.75rem;background:var(--surface);padding:0 14px;display:flex;align-items:center;color:var(--ink-faint);font-size:13.5px}
+    .in-focus{border-color:var(--honey);box-shadow:0 0 0 3px var(--honey-wash)}
+  </style>
+</helmet>
+
+<div style="width:1200px;min-height:2120px;padding:56px 64px;display:flex;flex-direction:column;gap:44px;background:var(--paper)">
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:baseline;gap:14px">
+      <span class="serif" style="font-size:34px">FijaPrecio</span>
+      <span class="lbl">Sistema visual · reskin</span>
+    </div>
+    <p style="margin:0;max-width:620px;color:var(--ink-soft);font-size:15px">Cálido, tranquilo, con la tipografía al frente. Un solo acento —<strong style="color:var(--honey-ink)">miel</strong>, el color del valor y del comercio— sobre papel tibio y tinta. Verde para lo que sube, arcilla para lo que cae.</p>
+  </div>
+
+  <!-- PALETTE -->
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <h2 style="font-size:17px">Paleta</h2>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--paper)"></div><div class="lbl">Papel · fondo</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.985 .007 83)</div></div>
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--surface)"></div><div class="lbl">Superficie · tarjetas</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.998 .003 83)</div></div>
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--sunk)"></div><div class="lbl">Hundido · encabezados</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.963 .011 82)</div></div>
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--border)"></div><div class="lbl">Borde · hairline</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.905 .012 78)</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--ink)"></div><div class="lbl">Tinta · texto, botón primario</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.265 .019 64)</div></div>
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--ink-soft)"></div><div class="lbl">Tinta suave · secundario</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.45 .016 66)</div></div>
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--honey)"></div><div class="lbl">Miel · acento de marca</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.75 .125 78)</div></div>
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--honey-wash)"></div><div class="lbl">Miel lavado · fondos de acento</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.945 .05 82)</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--gain)"></div><div class="lbl">Verde · margen sube, precio de valor</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.58 .11 158)</div></div>
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--gain-wash)"></div><div class="lbl">Verde lavado</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.95 .035 158)</div></div>
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--loss)"></div><div class="lbl">Arcilla · margen cae, sobre el mercado</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.56 .14 32)</div></div>
+      <div style="display:flex;flex-direction:column;gap:7px"><div class="sw" style="background:var(--loss-wash)"></div><div class="lbl">Arcilla lavado</div><div class="num" style="font-size:11px;color:var(--ink-faint)">oklch(.95 .04 34)</div></div>
+    </div>
+  </section>
+
+  <!-- TYPE -->
+  <section style="display:flex;flex-direction:column;gap:18px">
+    <h2 style="font-size:17px">Tipografía</h2>
+    <p style="margin:0;color:var(--ink-soft);font-size:13.5px;max-width:640px">Una sola familia: <strong>Hanken Grotesk</strong> (humanista, tranquila, legible en pequeño). Los momentos grandes son la misma tipografía en <strong>bold</strong>, más grande. Números siempre tabulares (<code>tnum</code>). Fallback: system-ui.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">
+      <div class="card" style="padding:28px;display:flex;flex-direction:column;gap:14px">
+        <div class="lbl">Display · Hanken bold — saludo, titulares</div>
+        <div class="serif" style="font-size:44px;line-height:1.05">Hola, Ana Torres</div>
+        <p style="margin:0;color:var(--ink-soft);font-size:13px">Para el saludo, titulares de estado vacío y el precio "hero". Weight 700, tracking un poco más ceñido.</p>
+      </div>
+      <div class="card" style="padding:28px;display:flex;flex-direction:column;gap:12px">
+        <div class="lbl">Cuerpo · Hanken 400 / 500 / 600</div>
+        <div style="font-size:24px;font-weight:600">Costo del producto y receta</div>
+        <div style="font-size:15px">Texto de interfaz, botones, tablas.</div>
+        <div class="num" style="font-size:15px;font-weight:600">1234567890 · S/ 1.234,50 · 40%</div>
+        <p style="margin:0;color:var(--ink-soft);font-size:13px">Números tabulares (<code>tnum</code>) en todas partes.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:baseline">
+      <div style="display:flex;flex-direction:column;gap:2px"><span class="serif" style="font-size:32px">Display 32</span><span class="lbl">bold · saludo</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:22px;font-weight:600">Título 22</span><span class="lbl">grotesk 600</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:600">Subtítulo 16</span><span class="lbl">grotesk 600</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px">Cuerpo 14</span><span class="lbl">grotesk 400</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--ink-faint)">Ayuda 12</span><span class="lbl">grotesk 400</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span class="lbl">Etiqueta 11 · caps</span><span class="lbl">grotesk 600</span></div>
+    </div>
+  </section>
+
+  <!-- COMPONENTS -->
+  <section style="display:flex;flex-direction:column;gap:18px">
+    <h2 style="font-size:17px">Componentes</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">
+
+      <div class="card" style="padding:26px;display:flex;flex-direction:column;gap:18px">
+        <div class="lbl">Botones · alto 44, radio 12</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+          <span class="btn btn-primary">Crear producto</span>
+          <span class="btn btn-secondary">Cancelar</span>
+          <span class="btn btn-ghost">Ver todo</span>
+        </div>
+        <p style="margin:0;color:var(--ink-soft);font-size:12.5px">Primario = tinta (no miel). La miel se guarda para acentos: navegación activa, enlaces, el precio sugerido, el foco.</p>
+      </div>
+
+      <div class="card" style="padding:26px;display:flex;flex-direction:column;gap:16px">
+        <div class="lbl">Campos · alto 44</div>
+        <div class="in">Torta de chocolate 1 kg</div>
+        <div class="in in-focus">Buscar insumo…</div>
+        <p style="margin:0;color:var(--ink-soft);font-size:12.5px">Foco = borde miel + halo miel-lavado. Sin sombras.</p>
+      </div>
+
+      <div class="card" style="padding:26px;display:flex;flex-direction:column;gap:14px">
+        <div class="lbl">Etiquetas · pill, radio completo</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="pill" style="background:var(--sunk);color:var(--ink-soft)">Borrador</span>
+          <span class="pill" style="background:var(--honey-wash);color:var(--honey-ink)">Mercado (consenso)</span>
+          <span class="pill" style="background:var(--gain-wash);color:var(--gain)">Competitivo</span>
+          <span class="pill" style="background:var(--loss-wash);color:var(--loss)">Sin precio</span>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600;font-size:15px">Tarjeta</span>
+          <span class="lbl">radio 16 · borde hairline · sin sombra</span>
+        </div>
+        <div style="padding:22px;color:var(--ink-soft);font-size:13px">Superficie sobre papel, un solo borde fino. La calma viene de la falta de sombras y del espacio, no de capas.</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:24px;display:flex;gap:40px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:8px"><div class="lbl">Radios</div><div style="display:flex;gap:10px;align-items:flex-end"><div style="width:44px;height:44px;background:var(--sunk);border:1px solid var(--border);border-radius:.5rem"></div><div style="width:44px;height:44px;background:var(--sunk);border:1px solid var(--border);border-radius:.75rem"></div><div style="width:44px;height:44px;background:var(--sunk);border:1px solid var(--border);border-radius:1rem"></div></div><div style="font-size:11px;color:var(--ink-faint)">8 · 12 · 16px — más suave que hoy</div></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div class="lbl">Espaciado base</div><div style="display:flex;gap:6px;align-items:flex-end"><div style="width:4px;height:16px;background:var(--honey)"></div><div style="width:8px;height:24px;background:var(--honey)"></div><div style="width:12px;height:32px;background:var(--honey)"></div><div style="width:16px;height:40px;background:var(--honey)"></div><div style="width:24px;height:48px;background:var(--honey)"></div></div><div style="font-size:11px;color:var(--ink-faint)">4 · 8 · 12 · 16 · 24 — respiro generoso</div></div>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+</body>
+</html>

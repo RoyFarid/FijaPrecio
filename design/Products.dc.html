@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --paper:oklch(0.985 0.007 83); --surface:oklch(0.998 0.003 83); --sunk:oklch(0.963 0.011 82);
+      --border:oklch(0.905 0.012 78); --border-2:oklch(0.84 0.016 75);
+      --ink:oklch(0.265 0.019 64); --ink-soft:oklch(0.45 0.016 66); --ink-faint:oklch(0.585 0.014 70);
+      --honey:oklch(0.75 0.125 78); --honey-ink:oklch(0.55 0.13 66); --honey-wash:oklch(0.945 0.05 82);
+      --gain:oklch(0.58 0.11 158); --gain-wash:oklch(0.95 0.035 158);
+      --loss:oklch(0.56 0.14 32); --loss-wash:oklch(0.95 0.04 34);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:"Hanken Grotesk",system-ui,-apple-system,sans-serif;font-feature-settings:"tnum";-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+    h1,h2{margin:0;font-weight:600;letter-spacing:-0.011em}
+    .serif{font-weight:700;letter-spacing:-0.02em}
+    .num{font-variant-numeric:tabular-nums}
+    .app{width:1440px;height:980px;display:flex;overflow:hidden}
+    .side{width:256px;flex-shrink:0;padding:22px 16px;display:flex;flex-direction:column;gap:6px}
+    .brand{font-weight:700;letter-spacing:-0.02em;font-size:23px;padding:6px 10px;margin-bottom:16px}
+    .navcap{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);padding:0 10px 4px}
+    .nav{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:.7rem;color:var(--ink-soft);font-weight:500;font-size:13.5px}
+    .nav svg{width:17px;height:17px}
+    .nav.on{background:var(--honey-wash);color:var(--honey-ink);font-weight:600}
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;border-left:1px solid var(--border);background:var(--surface)}
+    .top{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;padding:0 28px}
+    .avatar{width:34px;height:34px;border-radius:999px;background:var(--honey-wash);color:var(--honey-ink);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+    .content{flex:1;overflow:auto;padding:10px 44px 48px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:1rem}
+    .lbl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+    .btn{height:40px;padding:0 16px;border-radius:.7rem;background:var(--ink);color:var(--paper);font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:8px}
+    .pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:600;background:var(--sunk);color:var(--ink-soft)}
+    .row{display:grid;grid-template-columns:1.7fr 1fr 0.9fr 1fr;align-items:center;gap:20px;padding:16px 22px;border-top:1px solid var(--border)}
+    .gauge{height:6px;border-radius:999px;background:var(--sunk);overflow:hidden}
+  </style>
+</helmet>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">FijaPrecio</div>
+    <div class="navcap">Panel</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Inicio</div>
+    <div class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>Productos</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>Alertas</div>
+  </aside>
+
+  <div class="main">
+    <div class="top"><div class="avatar">AT</div></div>
+    <div class="content">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:26px">
+        <div>
+          <h1 class="serif" style="font-size:32px">Productos</h1>
+          <p style="margin:6px 0 0;color:var(--ink-soft);font-size:13.5px">Cada producto tiene una receta y un precio sugerido. La barra dice qué tan cerca estás de tu meta de margen.</p>
+        </div>
+        <span class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo producto</span>
+      </div>
+
+      <div class="card">
+        <div style="display:grid;grid-template-columns:1.7fr 1fr 0.9fr 1fr;gap:20px;padding:12px 22px">
+          <span class="lbl">Producto</span><span class="lbl">Margen vs. meta</span><span class="lbl">Insumos</span><span class="lbl" style="text-align:right">Precio objetivo</span>
+        </div>
+
+        <div class="row">
+          <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600;font-size:14px">Torta de chocolate 1 kg</span><span class="pill">Borrador</span></div>
+          <div style="display:flex;flex-direction:column;gap:5px"><div class="gauge"><div style="width:62%;height:100%;background:var(--loss)"></div></div><span style="font-size:11px;color:var(--loss);font-weight:600">22% · meta 35%</span></div>
+          <div style="color:var(--ink-soft);font-size:13px">6 insumos</div>
+          <div class="num" style="text-align:right;font-weight:600">S/ 45,00</div>
+        </div>
+        <div class="row">
+          <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600;font-size:14px">Pan francés</span><span class="pill">Borrador</span></div>
+          <div style="display:flex;flex-direction:column;gap:5px"><div class="gauge"><div style="width:100%;height:100%;background:var(--gain)"></div></div><span style="font-size:11px;color:var(--gain);font-weight:600">35% · en meta</span></div>
+          <div style="color:var(--ink-soft);font-size:13px">4 insumos</div>
+          <div class="num" style="text-align:right;font-weight:600">S/ 0,60</div>
+        </div>
+        <div class="row">
+          <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600;font-size:14px">Baguette artesanal</span><span class="pill">Borrador</span></div>
+          <div style="display:flex;flex-direction:column;gap:5px"><div class="gauge"><div style="width:88%;height:100%;background:var(--honey)"></div></div><span style="font-size:11px;color:var(--honey-ink);font-weight:600">31% · casi en meta</span></div>
+          <div style="color:var(--ink-soft);font-size:13px">2 insumos</div>
+          <div class="num" style="text-align:right;font-weight:600">S/ 2,50</div>
+        </div>
+        <div class="row">
+          <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600;font-size:14px">Polo estampado</span><span class="pill">Borrador</span></div>
+          <div style="display:flex;flex-direction:column;gap:5px"><div class="gauge"><div style="width:100%;height:100%;background:var(--gain)"></div></div><span style="font-size:11px;color:var(--gain);font-weight:600">38% · en meta</span></div>
+          <div style="color:var(--ink-soft);font-size:13px">3 insumos · confección</div>
+          <div class="num" style="text-align:right;font-weight:600">S/ 38,00</div>
+        </div>
+        <div class="row">
+          <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600;font-size:14px">Pan ciabatta</span><span class="pill">Borrador</span></div>
+          <div style="display:flex;flex-direction:column;gap:5px"><div class="gauge"><div style="width:74%;height:100%;background:var(--honey)"></div></div><span style="font-size:11px;color:var(--honey-ink);font-weight:600">26% · meta 35%</span></div>
+          <div style="color:var(--ink-soft);font-size:13px">2 insumos</div>
+          <div class="num" style="text-align:right;font-weight:600">S/ 0,90</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

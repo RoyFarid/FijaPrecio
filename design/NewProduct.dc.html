@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --paper:oklch(0.985 0.007 83); --surface:oklch(0.998 0.003 83); --sunk:oklch(0.963 0.011 82);
+      --border:oklch(0.905 0.012 78); --border-2:oklch(0.84 0.016 75);
+      --ink:oklch(0.265 0.019 64); --ink-soft:oklch(0.45 0.016 66); --ink-faint:oklch(0.585 0.014 70);
+      --honey:oklch(0.75 0.125 78); --honey-ink:oklch(0.55 0.13 66); --honey-wash:oklch(0.945 0.05 82);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:"Hanken Grotesk",system-ui,-apple-system,sans-serif;font-feature-settings:"tnum";-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+    h1,h2{margin:0;font-weight:600;letter-spacing:-0.011em}
+    .serif{font-weight:700;letter-spacing:-0.02em}
+    .num{font-variant-numeric:tabular-nums}
+    .app{width:1440px;height:1240px;display:flex;overflow:hidden}
+    .side{width:256px;flex-shrink:0;padding:22px 16px;display:flex;flex-direction:column;gap:6px}
+    .brand{font-weight:700;letter-spacing:-0.02em;font-size:23px;padding:6px 10px;margin-bottom:16px}
+    .navcap{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);padding:0 10px 4px}
+    .nav{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:.7rem;color:var(--ink-soft);font-weight:500;font-size:13.5px}
+    .nav svg{width:17px;height:17px}
+    .nav.on{background:var(--honey-wash);color:var(--honey-ink);font-weight:600}
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;border-left:1px solid var(--border);background:var(--surface)}
+    .top{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;padding:0 28px}
+    .avatar{width:34px;height:34px;border-radius:999px;background:var(--honey-wash);color:var(--honey-ink);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+    .content{flex:1;overflow:auto;padding:10px 44px 40px;max-width:960px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:1rem;padding:24px}
+    .lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+    .field label{font-size:12.5px;font-weight:600;display:block;margin-bottom:7px}
+    .in{height:42px;border:1px solid var(--border-2);border-radius:.7rem;background:var(--surface);padding:0 13px;display:flex;align-items:center;color:var(--ink-faint);font-size:13px}
+    .in.val{color:var(--ink)}
+    .in.focus{border-color:var(--honey);box-shadow:0 0 0 3px var(--honey-wash);color:var(--ink)}
+    .btn{height:40px;padding:0 16px;border-radius:.7rem;font:inherit;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:8px;border:1px solid transparent}
+    .btn-p{background:var(--ink);color:var(--paper)}
+    .btn-2{background:var(--surface);border-color:var(--border-2);color:var(--ink)}
+    .linerow{display:grid;grid-template-columns:1.6fr 78px 78px 90px 34px;gap:10px;align-items:end;padding:14px;border:1px solid var(--border);border-radius:.8rem;background:var(--paper)}
+    .mini label{font-size:10.5px;font-weight:600;color:var(--ink-faint);display:block;margin-bottom:5px}
+    .mini .in{height:38px;font-size:12.5px}
+    .del{width:34px;height:38px;border-radius:.6rem;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--ink-faint)}
+  </style>
+</helmet>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">FijaPrecio</div>
+    <div class="navcap">Panel</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Inicio</div>
+    <div class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>Productos</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>Alertas</div>
+  </aside>
+
+  <div class="main">
+    <div class="top"><div class="avatar">AT</div></div>
+    <div class="content">
+      <div style="display:flex;align-items:center;gap:7px;color:var(--ink-faint);font-size:13px;font-weight:600;margin-bottom:14px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>Volver a productos</div>
+      <h1 class="serif" style="font-size:32px;margin-bottom:24px">Nuevo producto</h1>
+
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="card">
+          <h2 style="font-size:15px;margin-bottom:18px">Datos del producto</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field"><label>Nombre</label><div class="in focus">Torta de chocolate 1 kg</div></div>
+            <div class="field"><label>Rubro <span style="color:var(--ink-faint);font-weight:400">(opcional)</span></label><div class="in">pastelería</div></div>
+            <div class="field"><label>Moneda</label><div class="in val">PEN</div></div>
+            <div class="field"><label>Rinde (unidades por lote)</label><div class="in val">1</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <h2 style="font-size:15px">Receta</h2>
+            <span class="btn btn-2" style="height:34px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Agregar insumo</span>
+          </div>
+          <p style="margin:0 0 16px;font-size:12.5px;color:var(--ink-soft)">Si dejas el precio vacío usamos el de mercado o tu último precio.</p>
+
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="linerow">
+              <div class="field" style="margin:0"><label style="font-size:10.5px;color:var(--ink-faint)">Insumo</label><div class="in focus" style="height:38px;font-size:12.5px">Harina sin preparar</div></div>
+              <div class="mini"><label>Unidad</label><div class="in val" style="height:38px;font-size:12.5px">kg</div></div>
+              <div class="mini"><label>Cantidad</label><div class="in val" style="height:38px;font-size:12.5px">0,5</div></div>
+              <div class="mini"><label>Merma</label><div class="in" style="height:38px;font-size:12.5px">0,05</div></div>
+              <div class="del"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M5 7l1 13a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4h6v3"/></svg></div>
+            </div>
+            <div class="linerow">
+              <div class="field" style="margin:0"><label style="font-size:10.5px;color:var(--ink-faint)">Insumo</label><div class="in val" style="height:38px;font-size:12.5px">Cacao en polvo</div></div>
+              <div class="mini"><label>Unidad</label><div class="in val" style="height:38px;font-size:12.5px">kg</div></div>
+              <div class="mini"><label>Cantidad</label><div class="in val" style="height:38px;font-size:12.5px">0,15</div></div>
+              <div class="mini"><label>Merma</label><div class="in" style="height:38px;font-size:12.5px">0</div></div>
+              <div class="del"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M5 7l1 13a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4h6v3"/></svg></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="font-size:15px;margin-bottom:4px">Meta de precio <span style="color:var(--ink-faint);font-weight:400;font-size:12.5px">(opcional)</span></h2>
+          <p style="margin:0 0 16px;font-size:12.5px;color:var(--ink-soft)">Si defines una, el costeo te dice cuánto falta para llegar.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field"><label>Precio de mercado objetivo</label><div class="in val">45,00</div></div>
+            <div class="field"><label>Margen objetivo</label><div class="in val">0,35</div></div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px">
+          <span class="btn btn-2">Cancelar</span>
+          <span class="btn btn-p">Crear producto</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

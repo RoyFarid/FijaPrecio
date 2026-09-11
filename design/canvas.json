@@ -1,0 +1,22 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 980, "title": "Dashboard" },
+    { "file": "Foundation.dc.html", "x": 1560, "y": 0, "w": 1200, "h": 2120, "title": "Sistema visual" },
+    { "file": "Login.dc.html", "x": 0, "y": 2280, "w": 1200, "h": 820 },
+    { "file": "Products.dc.html", "x": 1320, "y": 2280, "w": 1440, "h": 980, "title": "Productos" },
+    { "file": "ProductDetail.dc.html", "x": 0, "y": 3400, "w": 1440, "h": 1180, "title": "Detalle · Costeo" },
+    { "file": "NewProduct.dc.html", "x": 1560, "y": 3400, "w": 1440, "h": 1240, "title": "Nuevo producto" },
+    { "file": "Alerts.dc.html", "x": 0, "y": 4780, "w": 1440, "h": 980, "title": "Alertas" },
+    { "file": "RadarDetail.dc.html", "x": 1560, "y": 4780, "w": 1440, "h": 1180, "title": "Detalle · Radar de mercado" }
+  ],
+  "annotations": [
+    {
+      "id": "direction",
+      "x": 0,
+      "y": -210,
+      "w": 640,
+      "text": "Reskin FijaPrecio — vibe Mercury / Cal.com\n\nPapel tibio + tinta, un solo acento: MIEL (oklch .75 .125 78) — el color del valor, la cosecha, el comercio; casi nadie en SaaS lo usa de primario. Verde = margen sube / precio de valor. Arcilla = margen cae / sobre el mercado.\n\nUna sola tipografía: Hanken Grotesk. Los momentos grandes (saludo, titulares) son la misma familia en bold, más grande. Números siempre tabulares. Botón primario = tinta, no miel (la miel se reserva para navegación activa, enlaces, el precio sugerido y el foco).\n\nEsto guía un reskin en código (Next 15 + Tailwind v4), no un rebuild — la información y los flujos no cambian."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

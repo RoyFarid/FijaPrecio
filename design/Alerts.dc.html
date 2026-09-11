@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --paper:oklch(0.985 0.007 83); --surface:oklch(0.998 0.003 83); --sunk:oklch(0.963 0.011 82);
+      --border:oklch(0.905 0.012 78); --border-2:oklch(0.84 0.016 75);
+      --ink:oklch(0.265 0.019 64); --ink-soft:oklch(0.45 0.016 66); --ink-faint:oklch(0.585 0.014 70);
+      --honey:oklch(0.75 0.125 78); --honey-ink:oklch(0.55 0.13 66); --honey-wash:oklch(0.945 0.05 82);
+      --gain:oklch(0.58 0.11 158);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:"Hanken Grotesk",system-ui,-apple-system,sans-serif;font-feature-settings:"tnum";-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+    h1,h2{margin:0;font-weight:600;letter-spacing:-0.011em}
+    .serif{font-weight:700;letter-spacing:-0.02em}
+    .app{width:1440px;height:980px;display:flex;overflow:hidden;position:relative}
+    .side{width:256px;flex-shrink:0;padding:22px 16px;display:flex;flex-direction:column;gap:6px}
+    .brand{font-weight:700;letter-spacing:-0.02em;font-size:23px;padding:6px 10px;margin-bottom:16px}
+    .navcap{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);padding:0 10px 4px}
+    .nav{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:.7rem;color:var(--ink-soft);font-weight:500;font-size:13.5px}
+    .nav svg{width:17px;height:17px}
+    .nav.on{background:var(--honey-wash);color:var(--honey-ink);font-weight:600}
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;border-left:1px solid var(--border);background:var(--surface)}
+    .top{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;padding:0 28px}
+    .avatar{width:34px;height:34px;border-radius:999px;background:var(--honey-wash);color:var(--honey-ink);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+    .content{flex:1;overflow:auto;padding:10px 44px 48px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:1rem}
+    .lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+    .btn{height:40px;padding:0 16px;border-radius:.7rem;font:inherit;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:8px;border:1px solid transparent}
+    .btn-p{background:var(--ink);color:var(--paper)}
+    .btn-2{background:var(--surface);border-color:var(--border-2);color:var(--ink)}
+    .pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:600}
+    .sw{width:36px;height:21px;border-radius:999px;background:var(--honey);position:relative;flex-shrink:0}
+    .sw::after{content:"";position:absolute;width:16px;height:16px;border-radius:999px;background:#fff;top:2.5px;right:2.5px}
+    .field label{font-size:12px;font-weight:600;display:block;margin-bottom:6px}
+    .in{height:40px;border:1px solid var(--border-2);border-radius:.65rem;background:var(--surface);padding:0 12px;display:flex;align-items:center;color:var(--ink-faint);font-size:13px}
+    .in.val{color:var(--ink)}
+    .in.focus{border-color:var(--honey);box-shadow:0 0 0 3px var(--honey-wash);color:var(--ink)}
+    .scrim{position:absolute;inset:0;background:oklch(0.2 0.02 60 / 0.28)}
+    .dialog{position:absolute;top:96px;left:50%;transform:translateX(-50%);width:460px;background:var(--surface);border:1px solid var(--border);border-radius:1.1rem;box-shadow:0 24px 60px -12px oklch(0.2 0.02 60 / 0.3);overflow:hidden}
+  </style>
+</helmet>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">FijaPrecio</div>
+    <div class="navcap">Panel</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Inicio</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>Productos</div>
+    <div class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>Alertas</div>
+  </aside>
+
+  <div class="main">
+    <div class="top"><div class="avatar">AT</div></div>
+    <div class="content">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px">
+        <div>
+          <h1 class="serif" style="font-size:32px">Alertas</h1>
+          <p style="margin:6px 0 0;color:var(--ink-soft);font-size:13.5px">Te avisamos cuando tu margen, un insumo o la competencia se mueven.</p>
+        </div>
+        <span class="btn btn-p"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva alerta</span>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:flex-start;gap:16px;padding:18px 22px;border-bottom:1px solid var(--border)">
+          <div style="width:36px;height:36px;border-radius:.6rem;background:var(--honey-wash);color:var(--honey-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg></div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:600;font-size:14px">Margen Pan francés</span><span class="pill" style="background:var(--sunk);color:var(--ink-soft)">Margen bajo</span><span class="pill" style="background:var(--honey-wash);color:var(--honey-ink)">En la app</span></div>
+            <div style="color:var(--ink-faint);font-size:12px;margin-top:3px">Avisa si el margen cae por debajo de 25% · nunca se disparó</div>
+          </div>
+          <div class="sw"></div>
+          <span style="font-size:12.5px;color:var(--honey-ink);font-weight:600">Editar</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:16px;padding:18px 22px">
+          <div style="width:36px;height:36px;border-radius:.6rem;background:var(--sunk);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:600;font-size:14px">Sube el cacao</span><span class="pill" style="background:var(--sunk);color:var(--ink-soft)">Sube un insumo</span><span class="pill" style="background:var(--honey-wash);color:var(--honey-ink)">Correo</span></div>
+            <div style="color:var(--ink-faint);font-size:12px;margin-top:3px">Avisa si el precio de mercado sube más de 10% · se disparó ayer</div>
+          </div>
+          <div class="sw" style="background:var(--border-2)"></div>
+          <span style="font-size:12.5px;color:var(--honey-ink);font-weight:600">Editar</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIALOG -->
+  <div class="scrim"></div>
+  <div class="dialog">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border)"><h2 style="font-size:16px">Nueva alerta</h2></div>
+    <div style="padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+      <div class="field"><label>Nombre</label><div class="in focus">Margen Torta de chocolate</div></div>
+      <div class="field"><label>Tipo de alerta</label><div class="in val" style="justify-content:space-between">Margen bajo <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-faint)"><path d="m6 9 6 6 6-6"/></svg></div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:6px">Cuando el margen de un producto cae por debajo del mínimo.</div></div>
+      <div class="field"><label>Producto</label><div class="in val" style="justify-content:space-between">Torta de chocolate 1 kg <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-faint)"><path d="m6 9 6 6 6-6"/></svg></div></div>
+      <div class="field"><label>Margen mínimo</label><div class="in val">0,25</div></div>
+      <div class="field"><label>Cómo avisarte</label>
+        <div style="display:flex;gap:16px;font-size:13px;color:var(--ink-soft)">
+          <span style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:16px;border-radius:4px;background:var(--honey);display:flex;align-items:center;justify-content:center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>En la app</span>
+          <span style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:16px;border-radius:4px;border:1px solid var(--border-2)"></span>Correo</span>
+          <span style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:16px;border-radius:4px;border:1px solid var(--border-2)"></span>Telegram</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:4px">
+        <span class="btn btn-2">Cancelar</span><span class="btn btn-p">Crear</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

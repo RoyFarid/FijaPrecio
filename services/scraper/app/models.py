@@ -19,6 +19,12 @@ class ScrapingSource(BaseModel):
     rate_limit_rpm: int = 10
     priority: int = 0
 
+    @property
+    def rubros(self) -> list[str] | None:
+        """`config.rubros` (rubros que sirve la fuente); None = universal."""
+        value = self.config.get("rubros")
+        return [str(x) for x in value] if isinstance(value, list) else None
+
 
 class ScraperSettings(BaseModel):
     """Parámetros de negocio leídos de `AppSetting` (scope=GLOBAL, prefijo `scraper.`)."""
@@ -26,12 +32,15 @@ class ScraperSettings(BaseModel):
     outlier_trim_pct: float = 0.1
     top_n_nightly: int = 100
     result_ttl_hours: float = 24.0
+    # alias de rubros (override del default en app/rubros.py)
+    rubro_aliases: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class ScrapeTarget(BaseModel):
     canonical_input_id: str = Field(alias="canonicalInputId")
     query: str
     base_unit: str = Field(alias="baseUnit")
+    rubro: str | None = None
 
 
 class RadarTarget(BaseModel):
@@ -39,6 +48,7 @@ class RadarTarget(BaseModel):
     query: str
     region: str = "PE"
     currency: str = "PEN"
+    rubro: str | None = None
 
 
 class MarketSnapshotOut(BaseModel):
@@ -79,6 +89,7 @@ class ScrapeRequest(BaseModel):
     base_unit: str | None = Field(default=None, alias="baseUnit")
     region: str | None = None
     currency: str = "PEN"
+    rubro: str | None = None
     source_slugs: list[str] | None = Field(default=None, alias="sourceSlugs")
 
 

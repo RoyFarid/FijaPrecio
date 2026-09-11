@@ -20,6 +20,7 @@ from app.models import (
     ScrapeTarget,
 )
 from app.pipeline import aggregate_market_price, build_batch
+from app.rubros import source_serves
 
 
 async def run_target(
@@ -30,11 +31,18 @@ async def run_target(
 ) -> ScrapeResult:
     settings = get_settings()
     sources = await db.load_enabled_sources()
+    scraper_settings = await db.load_scraper_settings()
     if source_slugs:
         wanted = set(source_slugs)
         sources = [s for s in sources if s.slug in wanted]
+    else:
+        # sin override explícito: solo las fuentes que sirven este rubro
+        sources = [
+            s
+            for s in sources
+            if source_serves(s.rubros, target.rubro, scraper_settings.rubro_aliases)
+        ]
 
-    scraper_settings = await db.load_scraper_settings()
     conversions = await db.load_unit_conversions()
     run_key = datetime.now(UTC).strftime("%Y-%m-%d")
 
@@ -43,7 +51,7 @@ async def run_target(
     errors: list[str] = []
 
     for source in sources:
-        collector = get_collector(source.type)
+        collector = get_collector(source)
         if collector is None:
             continue
         try:
@@ -95,15 +103,21 @@ async def run_radar_target(
     """Radar de competencia: colecta el PRODUCTO FINAL de todas las fuentes,
     agrega (min/p25/avg/median/p75/p90) y publica un snapshot en MarketPrice."""
     sources = await db.load_enabled_sources()
+    scraper_settings = await db.load_scraper_settings()
     if source_slugs:
         wanted = set(source_slugs)
         sources = [s for s in sources if s.slug in wanted]
-    scraper_settings = await db.load_scraper_settings()
+    else:
+        sources = [
+            s
+            for s in sources
+            if source_serves(s.rubros, target.rubro, scraper_settings.rubro_aliases)
+        ]
 
     priced: list[tuple[float, str]] = []
     errors: list[str] = []
     for source in sources:
-        collector = get_collector(source.type)
+        collector = get_collector(source)
         if collector is None:
             continue
         try:

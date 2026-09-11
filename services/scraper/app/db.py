@@ -70,10 +70,17 @@ class Database:
             "SELECT key, value FROM \"AppSetting\" WHERE scope = 'GLOBAL' AND key LIKE 'scraper.%'"
         )
         values = {r["key"]: _as_json(r["value"]) for r in rows}
+        raw_aliases = values.get("scraper.rubro_aliases", {})
+        aliases = (
+            {str(k): [str(x) for x in v] for k, v in raw_aliases.items()}
+            if isinstance(raw_aliases, dict)
+            else {}
+        )
         return ScraperSettings(
             outlier_trim_pct=float(values.get("scraper.outlier_trim_pct", 0.1)),
             top_n_nightly=int(values.get("scraper.top_n_nightly", 100)),
             result_ttl_hours=float(values.get("scraper.result_ttl_hours", 24)),
+            rubro_aliases=aliases,
         )
 
     async def load_unit_conversions(self) -> dict[tuple[str, str], float]:

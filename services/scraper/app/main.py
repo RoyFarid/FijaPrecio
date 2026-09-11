@@ -80,6 +80,7 @@ async def scrape(
                 query=req.query,
                 region=region,
                 currency=req.currency,
+                rubro=req.rubro,
             ),
             source_slugs=req.source_slugs,
         )
@@ -93,6 +94,7 @@ async def scrape(
             canonicalInputId=req.canonical_input_id,
             query=req.query,
             baseUnit=req.base_unit,
+            rubro=req.rubro,
         ),
         region=region,
         source_slugs=req.source_slugs,

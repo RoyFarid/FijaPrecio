@@ -29,7 +29,9 @@ class MercadoLibreCollector:
         async with new_http_client() as client:
             resp = await client.get(url, headers=headers)
 
-        if resp.status_code in (401, 403):
+        # La API pública de ML exige OAuth desde 2023: sin token devuelve 400/401/403.
+        # Un source sin credenciales no debe tumbar la corrida — se salta con log.
+        if resp.status_code in (400, 401, 403):
             log.warning("mercadolibre.auth_required", status=resp.status_code, query=query)
             return []
         resp.raise_for_status()

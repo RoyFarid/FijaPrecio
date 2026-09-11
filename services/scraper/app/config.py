@@ -8,12 +8,18 @@ Postgres — aquí solo hay infra y credenciales.
 
 from functools import lru_cache
 
-from pydantic import Field, HttpUrl
+from pydantic import Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @field_validator("proxy_url", "mercadolibre_access_token", "sentry_dsn", mode="before")
+    @classmethod
+    def _empty_to_none(cls, v: object) -> object:
+        # `.env` con `KEY=` da "" — trátalo como ausente (igual que zOptional en Node).
+        return None if isinstance(v, str) and v.strip() == "" else v
 
     env: str = Field("production", alias="NODE_ENV")
     port: int = Field(8000, alias="PORT")

@@ -135,14 +135,12 @@ rollback del deploy sin romper el esquema.
 
 ## 4b. RLS — activar el filtrado real
 
-Las políticas RLS existen desde `20260907235300_manual_*` (`FORCE ROW LEVEL
-SECURITY` + `tenant_isolation` en 21 tablas de tenant, usando
-`current_setting('app.current_org')` / `app.bypass_rls`). **Pero el rol dueño
-—superusuario en local y en Railway— hace BYPASS de RLS aunque esté FORCE**, así
-que hoy RLS no filtra nada. El aislamiento real lo da el `where: { organizationId }`
-de cada query (defensa primaria); RLS es la red de seguridad.
+**Estado: ACTIVO en local desde 2026-09-09** (`DB_RLS_ENFORCED=true`). El rol dueño
+hace BYPASS de RLS aunque esté FORCE; por eso la API conecta como `fijaprecio_app`
+(NOBYPASSRLS). El aislamiento primario sigue siendo el `where: { organizationId }`
+de cada query; RLS es la red de seguridad.
 
-Para activarla:
+Pasos (ya hechos en local; repetir en un entorno nuevo):
 
 ```bash
 # 1. crea el rol NOBYPASSRLS (migración; NOLOGIN)
@@ -160,17 +158,18 @@ pnpm --filter @fijaprecio/db rls:check
 Con `DB_RLS_ENFORCED=true` (+ `APP_DATABASE_URL`) la **API** conecta como
 `fijaprecio_app` y monta la extensión Prisma `rls`
 (`apps/api/src/prisma/rls.extension.ts`): cada op de modelo se envuelve en una tx
-que fija `app.current_org` o `app.bypass_rls` según el `OrgContext` que pone
-`JwtAuthGuard` (`tenant` para requests autenticadas, `system` para rutas
-`@Public()` marcadas `@RlsSystem()`). Transacciones interactivas y `$queryRaw`
-sobre tablas de tenant van por `PrismaService.withRls(fn, orgId?)` /
-`asSystem(fn)` (usan el cliente base sin la extensión, bajo `rlsReentry`). El
-`worker` y el `bot` siguen conectando como el dueño (son actores de sistema).
+que fija `app.current_org` o `app.bypass_rls` según el `OrgContext` que abre
+**`OrgContextMiddleware`** con `orgContextStorage.run()` (un middleware, no un
+guard — el `enterWith` desde un guard NO propagaba a los servicios). Sin JWT →
+sin contexto → la query corre como `system` (`bypass_rls`), correcto para
+auth/internal. Transacciones interactivas y `$queryRaw` sobre tablas de tenant
+van por `PrismaService.withRls(fn, orgId?)` / `asSystem(fn)` (cliente base sin la
+extensión, bajo `rlsReentry`). El `worker` y el `bot` siguen conectando como el
+dueño (son actores de sistema).
 
-> **Servicios ya migrados** (`auth.register`→`asSystem`, `products.create`→
-> `withRls`, `scrapeTargets`/`radarTargets` raw→`asSystem`, controladores
-> internos con `@RlsSystem()`). Build/typecheck/lint/test verdes. **Falta
-> probarlo con Postgres arriba** (Docker) antes de poner `DB_RLS_ENFORCED=true`.
+> **Verificado end-to-end 2026-09-09**: aislamiento org↔org, writes, endpoints
+> internos, register, web SSR, `db:rls:check` — todo verde. `@RlsSystem()` quedó
+> vestigial (nada lo lee).
 >
 > En Railway: crear el rol con las credenciales del owner
 > (`ALTER ROLE fijaprecio_app WITH LOGIN PASSWORD '<secreto>'`) y pasar

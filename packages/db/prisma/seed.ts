@@ -170,6 +170,13 @@ async function seedGlobalSettings() {
     'scraper.top_n_nightly': 100,
     'scraper.result_ttl_hours': 24,
     'scraper.outlier_trim_pct': 0.1, // recorta 10% extremos antes de la mediana
+    // Rubro (del insumo/producto) → alias. Acota qué fuentes se raspan:
+    // una fuente con `config.rubros=['gastronomia']` no se consulta para muebles.
+    'scraper.rubro_aliases': {
+      gastronomia: ['gastronomia', 'panaderia', 'pasteleria', 'reposteria', 'abarrotes', 'restaurante', 'cafeteria', 'bodega'],
+      muebles: ['muebles', 'carpinteria', 'madera', 'melamina', 'ferreteria', 'construccion', 'closet', 'cocina'],
+      confeccion: ['confeccion', 'textil', 'textiles', 'costura', 'ropa', 'avios', 'sastreria', 'bordado'],
+    },
 
     // Boletas / OCR
     'receipts.retention_days': 365,
@@ -256,38 +263,90 @@ const SCRAPING_SOURCES: Array<{
   {
     name: 'Promart',
     slug: 'promart',
-    type: 'PLAYWRIGHT',
+    type: 'API', // VTEX: API pública de catálogo (adapter=vtex), no requiere navegador
     baseUrl: 'https://www.promart.pe',
-    rateLimitRpm: 10,
+    rateLimitRpm: 30,
     priority: 5,
-    enabled: false, // se habilita cuando los selectores estén validados
+    enabled: true, // validado 2026-09-10 contra la API VTEX en vivo
     config: {
-      search_path: '/search?text={query}',
-      selectors: {
-        card: '[data-testid="product-card"]',
-        price: '[data-testid="price"]',
-        title: '[data-testid="product-name"]',
-      },
-      wait_for: '[data-testid="product-card"]',
+      adapter: 'vtex',
+      search_path: '/api/catalog_system/pub/products/search?ft={query}&_from=0&_to=49',
+      rubros: ['muebles'], // ferretería / construcción / hogar
+      // sin seller_filter: se toma la oferta disponible más barata (1P o marketplace)
     },
   },
   {
     name: 'Sodimac Perú',
     slug: 'sodimac-pe',
-    type: 'PLAYWRIGHT',
+    type: 'HTTP', // plataforma Falabella (Next.js): se parsea `__NEXT_DATA__` del HTML
     baseUrl: 'https://www.sodimac.com.pe',
-    rateLimitRpm: 10,
+    rateLimitRpm: 20,
     priority: 5,
-    enabled: false,
+    enabled: true, // validado 2026-09-10 contra el HTML/__NEXT_DATA__ en vivo
     config: {
-      search_path: '/sodimac-pe/search?Ntt={query}',
-      selectors: {
-        card: '.product-card',
-        price: '.price-amount',
-        title: '.product-title',
-      },
+      adapter: 'sodimac',
+      search_path: '/sodimac-pe/buscar?Ntt={query}',
+      rubros: ['muebles'],
     },
   },
+  {
+    name: 'Plaza Vea',
+    slug: 'plaza-vea',
+    type: 'API', // VTEX (Supermercados Peruanos)
+    baseUrl: 'https://www.plazavea.com.pe',
+    rateLimitRpm: 30,
+    priority: 5,
+    enabled: true, // validado 2026-09-10 contra la API VTEX en vivo
+    config: {
+      adapter: 'vtex',
+      search_path: '/api/catalog_system/pub/products/search?ft={query}&_from=0&_to=49',
+      rubros: ['gastronomia'],
+    },
+  },
+  {
+    name: 'Tottus',
+    slug: 'tottus',
+    type: 'HTTP', // plataforma Falabella (mismo parser que Sodimac)
+    baseUrl: 'https://tottus.falabella.com.pe',
+    rateLimitRpm: 20,
+    priority: 5,
+    enabled: true, // validado 2026-09-10 contra el HTML/__NEXT_DATA__ en vivo
+    config: {
+      adapter: 'falabella',
+      search_path: '/tottus-pe/search?Ntt={query}',
+      rubros: ['gastronomia'],
+    },
+  },
+  {
+    name: 'Metro',
+    slug: 'metro',
+    type: 'API', // VTEX (Cencosud Perú)
+    baseUrl: 'https://www.metro.pe',
+    rateLimitRpm: 30,
+    priority: 5,
+    enabled: true, // validado 2026-09-10 contra la API VTEX en vivo
+    config: {
+      adapter: 'vtex',
+      search_path: '/api/catalog_system/pub/products/search?ft={query}&_from=0&_to=49',
+      rubros: ['gastronomia'],
+    },
+  },
+  {
+    name: 'Wong',
+    slug: 'wong',
+    type: 'API', // VTEX (Cencosud Perú)
+    baseUrl: 'https://www.wong.pe',
+    rateLimitRpm: 30,
+    priority: 5,
+    enabled: true, // validado 2026-09-10 contra la API VTEX en vivo
+    config: {
+      adapter: 'vtex',
+      search_path: '/api/catalog_system/pub/products/search?ft={query}&_from=0&_to=49',
+      rubros: ['gastronomia'],
+    },
+  },
+  // Vivanda (Supermercados Peruanos): VTEX IO headless, el endpoint catalog_system
+  // público está deshabilitado → pendiente (intelligent-search GraphQL).
 ];
 
 async function seedScrapingSources() {

@@ -210,7 +210,9 @@ export const priceObservationInputSchema = z.object({
   region: z.string().default('PE'),
   source: z.enum(['MANUAL', 'OCR', 'SCRAPE', 'OFFICIAL', 'SUPPLIER']),
   sourceRef: z.string().optional(),
-  observedAt: z.string().datetime().optional(),
+  // `{ offset: true }`: los clientes (scraper/OCR/gov en Python) mandan
+  // `...+00:00`, no `...Z` — ambos son ISO 8601 válidos.
+  observedAt: z.string().datetime({ offset: true }).optional(),
 });
 export type PriceObservationInput = z.infer<typeof priceObservationInputSchema>;
 

@@ -224,6 +224,15 @@ export type PriceObservationBatch = z.infer<typeof priceObservationBatchSchema>;
 
 // --- Radar de competencia (producto final) --------------------------------
 
+/** Un ítem real encontrado (el más cercano a la mediana) para linkear "ver en X". */
+export const sampleLinkSchema = z.object({
+  source: z.string(),
+  title: z.string(),
+  price: z.number(),
+  url: z.string(),
+});
+export type SampleLink = z.infer<typeof sampleLinkSchema>;
+
 /** Snapshot agregado que publica el scraper (POST /v1/internal/market-prices). */
 export const marketPriceSnapshotSchema = z.object({
   productId: z.string().uuid().nullable().default(null),
@@ -238,6 +247,7 @@ export const marketPriceSnapshotSchema = z.object({
   premiumPrice: z.number().positive().nullable(), // p90
   sampleSize: z.number().int().positive(),
   sourceBreakdown: z.record(z.string(), z.number().int()),
+  sampleLinks: z.array(sampleLinkSchema).default([]),
   scrapingJobId: z.string().uuid().nullable().default(null),
 });
 export type MarketPriceSnapshot = z.infer<typeof marketPriceSnapshotSchema>;
@@ -270,6 +280,7 @@ export const marketRadarViewSchema = z.object({
       premiumPrice: z.number().nullable(),
       sampleSize: z.number().int(),
       sourceBreakdown: z.record(z.string(), z.number()),
+      sampleLinks: z.array(sampleLinkSchema).default([]),
       capturedAt: z.string().datetime(),
     })
     .nullable(),

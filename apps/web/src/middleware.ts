@@ -29,6 +29,8 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Todo salvo estáticos, la API interna de Next y el healthcheck.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health).*)'],
+  // Todo salvo estáticos, la API interna de Next, el healthcheck y /api/logout
+  // (esa ruta limpia la cookie de sesión vencida — si la interceptáramos acá
+  // con `hasSession`, sería el mismo loop que existe para resolver).
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health|api/logout).*)'],
 };

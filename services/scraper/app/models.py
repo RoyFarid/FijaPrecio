@@ -34,6 +34,14 @@ class ScraperSettings(BaseModel):
     result_ttl_hours: float = 24.0
     # alias de rubros (override del default en app/rubros.py)
     rubro_aliases: dict[str, list[str]] = Field(default_factory=dict)
+    # tope opcional de links guardados por fuente en el radar (tabla "ver todos"
+    # del frontend); None = sin tope, se guardan todos los que se encontraron.
+    radar_links_per_source: int | None = None
+    # palabras de menaje/decoración a excluir en matches_query (override del
+    # default en app/pipeline.py); aplica a CUALQUIER producto/query, no es
+    # por producto. Vacío = sin override, usar DEFAULT_ACCESSORY_NOISE_WORDS
+    # (ver db.load_scraper_settings y app/pipeline.py).
+    accessory_noise_words: frozenset[str] = Field(default_factory=frozenset)
 
 
 class ScrapeTarget(BaseModel):
@@ -49,6 +57,18 @@ class RadarTarget(BaseModel):
     region: str = "PE"
     currency: str = "PEN"
     rubro: str | None = None
+    # unidad de venta del producto (de su receta activa) para normalizar precio
+    # por paquete → precio por unidad. Sin ella, se usa el precio del ítem tal cual.
+    base_unit: str | None = Field(default=None, alias="baseUnit")
+
+
+class SampleLinkOut(BaseModel):
+    """Un ítem real encontrado (el más cercano a la mediana) para linkear "ver en X"."""
+
+    source: str
+    title: str
+    price: float
+    url: str
 
 
 class MarketSnapshotOut(BaseModel):
@@ -64,6 +84,7 @@ class MarketSnapshotOut(BaseModel):
     premiumPrice: float | None = None
     sampleSize: int
     sourceBreakdown: dict[str, int]
+    sampleLinks: list[SampleLinkOut] = Field(default_factory=list)
     scrapingJobId: str | None = None
 
 

@@ -76,11 +76,23 @@ class Database:
             if isinstance(raw_aliases, dict)
             else {}
         )
+        raw_noise_words = values.get("scraper.accessory_noise_words", [])
+        noise_words = (
+            frozenset(str(w).lower() for w in raw_noise_words)
+            if isinstance(raw_noise_words, list)
+            else frozenset()
+        )
         return ScraperSettings(
             outlier_trim_pct=float(values.get("scraper.outlier_trim_pct", 0.1)),
             top_n_nightly=int(values.get("scraper.top_n_nightly", 100)),
             result_ttl_hours=float(values.get("scraper.result_ttl_hours", 24)),
             rubro_aliases=aliases,
+            radar_links_per_source=(
+                int(values["scraper.radar_links_per_source"])
+                if values.get("scraper.radar_links_per_source") is not None
+                else None
+            ),
+            accessory_noise_words=noise_words,
         )
 
     async def load_unit_conversions(self) -> dict[tuple[str, str], float]:

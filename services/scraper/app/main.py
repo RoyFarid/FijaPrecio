@@ -81,6 +81,7 @@ async def scrape(
                 region=region,
                 currency=req.currency,
                 rubro=req.rubro,
+                baseUnit=req.base_unit,
             ),
             source_slugs=req.source_slugs,
         )

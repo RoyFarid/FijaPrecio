@@ -19,7 +19,14 @@ from app.models import (
     ScrapeResult,
     ScrapeTarget,
 )
-from app.pipeline import aggregate_market_price, build_batch
+from app.pipeline import (
+    DEFAULT_ACCESSORY_NOISE_WORDS,
+    PricedItem,
+    aggregate_market_price,
+    build_batch,
+    derive_unit_price,
+    matches_query,
+)
 from app.rubros import source_serves
 
 
@@ -45,6 +52,7 @@ async def run_target(
 
     conversions = await db.load_unit_conversions()
     run_key = datetime.now(UTC).strftime("%Y-%m-%d")
+    noise_words = scraper_settings.accessory_noise_words or DEFAULT_ACCESSORY_NOISE_WORDS
 
     items_seen = 0
     published = 0
@@ -61,6 +69,12 @@ async def run_target(
             log.warning("collector.failed", source=source.slug, error=str(exc))
             continue
 
+        # el buscador de la tienda hace match por subcadena ("pan" en "Panadol");
+        # nos quedamos solo con lo que trae alguna palabra completa de la query,
+        # sin ser menaje/decoración ("Cuchillo de Pan") — ver matches_query.
+        raw = [
+            item for item in raw if matches_query(item.title, target.query, noise_words=noise_words)
+        ]
         items_seen += len(raw)
         batch = build_batch(
             raw,
@@ -114,7 +128,12 @@ async def run_radar_target(
             if source_serves(s.rubros, target.rubro, scraper_settings.rubro_aliases)
         ]
 
-    priced: list[tuple[float, str]] = []
+    # sin base_unit no hay a qué convertir: se usa el precio del ítem tal cual
+    # (igual que antes) — con base_unit, se normaliza paquete → precio unitario.
+    conversions = await db.load_unit_conversions() if target.base_unit else {}
+    noise_words = scraper_settings.accessory_noise_words or DEFAULT_ACCESSORY_NOISE_WORDS
+
+    priced: list[PricedItem] = []
     errors: list[str] = []
     for source in sources:
         collector = get_collector(source)
@@ -126,10 +145,28 @@ async def run_radar_target(
             errors.append(f"{source.slug}: {exc}")
             continue
         for item in raw:
-            if item.currency.upper() in {target.currency.upper(), "PEN"} and item.price > 0:
-                priced.append((round(item.price, 4), source.slug))
+            if not matches_query(item.title, target.query, noise_words=noise_words):
+                continue
+            if item.currency.upper() not in {target.currency.upper(), "PEN"}:
+                continue
+            price = (
+                derive_unit_price(item, target.base_unit, conversions)
+                if target.base_unit
+                else item.price
+            )
+            if price is None or price <= 0:
+                continue
+            priced.append(
+                PricedItem(
+                    price=round(price, 4), source=source.slug, title=item.title, url=item.url
+                )
+            )
 
-    agg = aggregate_market_price(priced, trim_pct=scraper_settings.outlier_trim_pct)
+    agg = aggregate_market_price(
+        priced,
+        trim_pct=scraper_settings.outlier_trim_pct,
+        links_per_source=scraper_settings.radar_links_per_source,
+    )
     if agg is None:
         log.info("radar.insufficient", query=target.query, seen=len(priced))
         return RadarRun(query=target.query, seen=len(priced), published=0, errors=errors)

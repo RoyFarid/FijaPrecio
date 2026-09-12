@@ -34,6 +34,10 @@ const recipeSchema = z.object({
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(160),
   rubro: z.string().trim().max(60).optional(),
+  // Término de búsqueda curado para el radar de mercado (scope=FINAL_PRODUCT).
+  // Si no se manda, el radar busca por `name` — hace falta cuando el nombre es
+  // demasiado genérico ("Pan") para una búsqueda de mercado específica.
+  radarQuery: z.string().trim().min(1).max(160).optional(),
   currency: z.string().length(3).default('PEN'),
   targetPrice: money.optional(),
   targetMarginPct: fraction.optional(),
@@ -46,6 +50,7 @@ export const updateProductSchema = z
   .object({
     name: z.string().trim().min(1).max(160).optional(),
     rubro: z.string().trim().max(60).nullable().optional(),
+    radarQuery: z.string().trim().min(1).max(160).nullable().optional(),
     currency: z.string().length(3).optional(),
     targetPrice: money.nullable().optional(),
     targetMarginPct: fraction.nullable().optional(),

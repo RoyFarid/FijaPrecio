@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@fijaprecio/db';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CatalogService } from '../catalog/catalog.service.js';
+import { MarketRadarService } from '../market-radar/market-radar.service.js';
 import { slugify } from '../auth/slug.js';
 import type {
   CreateProductInput,
@@ -16,18 +17,20 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly catalog: CatalogService,
+    private readonly marketRadar: MarketRadarService,
   ) {}
 
   async create(orgId: string, userId: string, dto: CreateProductInput) {
     const canonicalByName = await this.resolveCanonicals(dto.recipe);
 
-    return this.prisma.withRls(async (tx) => {
+    const created = await this.prisma.withRls(async (tx) => {
       const product = await tx.product.create({
         data: {
           organizationId: orgId,
           name: dto.name,
           slug: await this.uniqueSlug(tx, orgId, slugify(dto.name)),
           rubro: dto.rubro ?? null,
+          radarQuery: dto.radarQuery ?? null,
           currency: dto.currency,
           targetPrice: dto.targetPrice ?? null,
           targetMarginPct: dto.targetMarginPct ?? null,
@@ -48,6 +51,13 @@ export class ProductsService {
       const full = await this.load(tx, orgId, product.id);
       return this.serialize(full!);
     }, orgId);
+
+    // fuera de la transacción, sin esperar: un producto nuevo no debe esperar
+    // al barrido nocturno para tener su primer precio de mercado. Best-effort
+    // y nunca lanza — ver MarketRadarService.triggerScan.
+    void this.marketRadar.triggerScan(created.id);
+
+    return created;
   }
 
   /** PATCH de los datos del producto (no la receta). */
@@ -56,6 +66,7 @@ export class ProductsService {
       const data: Prisma.ProductUpdateInput = {};
       if (dto.name !== undefined) data.name = dto.name;
       if (dto.rubro !== undefined) data.rubro = dto.rubro;
+      if (dto.radarQuery !== undefined) data.radarQuery = dto.radarQuery;
       if (dto.currency !== undefined) data.currency = dto.currency;
       if (dto.targetPrice !== undefined) data.targetPrice = dto.targetPrice;
       if (dto.targetMarginPct !== undefined) data.targetMarginPct = dto.targetMarginPct;
@@ -226,6 +237,7 @@ export class ProductsService {
       name: product.name,
       slug: product.slug,
       rubro: product.rubro,
+      radarQuery: product.radarQuery,
       description: product.description,
       currency: product.currency,
       status: product.status,

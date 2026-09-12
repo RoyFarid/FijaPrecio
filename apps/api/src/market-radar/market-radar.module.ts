@@ -10,5 +10,6 @@ import {
   imports: [CostingModule],
   controllers: [MarketRadarController, InternalMarketRadarController],
   providers: [MarketRadarService],
+  exports: [MarketRadarService],
 })
 export class MarketRadarModule {}

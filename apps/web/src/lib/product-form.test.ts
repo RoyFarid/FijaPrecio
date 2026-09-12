@@ -11,6 +11,7 @@ import type { ProductDetail } from './types';
 const form: CreateProductForm = {
   name: '  Torta  ',
   rubro: '',
+  radarQuery: '',
   currency: 'pen',
   targetPrice: '50',
   targetMarginPct: '',
@@ -27,6 +28,7 @@ describe('formToCreatePayload', () => {
     expect(p.name).toBe('Torta');
     expect(p.currency).toBe('PEN');
     expect(p.rubro).toBeUndefined();
+    expect(p.radarQuery).toBeUndefined();
     expect(p.targetPrice).toBe(50);
     expect(p.targetMarginPct).toBeUndefined();
     expect(p.recipe.outputQuantity).toBe(2);
@@ -52,14 +54,21 @@ describe('formToCreatePayload', () => {
 });
 
 describe('formToUpdatePayload', () => {
-  it('rubro/targets vacíos → null (limpiar)', () => {
+  it('rubro/radarQuery/targets vacíos → null (limpiar)', () => {
     expect(formToUpdatePayload(form)).toMatchObject({
       name: 'Torta',
       rubro: null,
+      radarQuery: null,
       currency: 'PEN',
       targetPrice: 50,
       targetMarginPct: null,
     });
+  });
+
+  it('radarQuery con contenido se recorta y se manda', () => {
+    const withQuery = { ...form, radarQuery: '  pan de molde integral  ' };
+    expect(formToUpdatePayload(withQuery).radarQuery).toBe('pan de molde integral');
+    expect(formToCreatePayload(withQuery).radarQuery).toBe('pan de molde integral');
   });
 });
 
@@ -78,6 +87,7 @@ describe('productToFormValues', () => {
       name: 'Pan',
       slug: null,
       rubro: 'panadería',
+      radarQuery: 'pan de molde integral',
       description: null,
       currency: 'PEN',
       status: 'ACTIVE',
@@ -110,6 +120,7 @@ describe('productToFormValues', () => {
 
     const v = productToFormValues(product);
     expect(v.name).toBe('Pan');
+    expect(v.radarQuery).toBe('pan de molde integral');
     expect(v.targetPrice).toBe('12');
     expect(v.targetMarginPct).toBe('');
     expect(v.outputUnit).toBe('unidad');

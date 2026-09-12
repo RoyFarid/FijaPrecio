@@ -29,6 +29,7 @@ export function productToFormValues(product?: ProductDetail | null): CreateProdu
   return {
     name: product?.name ?? '',
     rubro: product?.rubro ?? '',
+    radarQuery: product?.radarQuery ?? '',
     currency: product?.currency ?? 'PEN',
     targetPrice: str(product?.targetPrice),
     targetMarginPct: str(product?.targetMarginPct),
@@ -79,6 +80,7 @@ export function formToCreatePayload(values: CreateProductForm): CreateProductInp
   return {
     name: values.name.trim(),
     rubro: values.rubro.trim() || undefined,
+    radarQuery: values.radarQuery.trim() || undefined,
     currency: cleanCurrency(values.currency),
     targetPrice: num(values.targetPrice),
     targetMarginPct: num(values.targetMarginPct),
@@ -86,11 +88,12 @@ export function formToCreatePayload(values: CreateProductForm): CreateProductInp
   };
 }
 
-/** Campos del producto para el PATCH (rubro/targets vacíos → null = limpiar). */
+/** Campos del producto para el PATCH (rubro/radarQuery/targets vacíos → null = limpiar). */
 export function formToUpdatePayload(values: CreateProductForm): UpdateProductPayload {
   return {
     name: values.name.trim(),
     rubro: values.rubro.trim() || null,
+    radarQuery: values.radarQuery.trim() || null,
     currency: cleanCurrency(values.currency),
     targetPrice: num(values.targetPrice) ?? null,
     targetMarginPct: num(values.targetMarginPct) ?? null,

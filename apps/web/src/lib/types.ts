@@ -92,6 +92,8 @@ export interface ProductDetail {
   name: string;
   slug: string | null;
   rubro: string | null;
+  /** Término de búsqueda curado para el radar de mercado; si es null, usa `name`. */
+  radarQuery: string | null;
   description: string | null;
   currency: string;
   status: ProductStatus;
@@ -193,6 +195,13 @@ export interface MarketHistory {
   points: MarketHistoryPoint[];
 }
 
+export interface MarketSampleLink {
+  source: string;
+  title: string;
+  price: number;
+  url: string;
+}
+
 export interface MarketRadarView {
   productId: string;
   region: string;
@@ -206,6 +215,7 @@ export interface MarketRadarView {
     premiumPrice: number | null;
     sampleSize: number;
     sourceBreakdown: Record<string, number>;
+    sampleLinks: MarketSampleLink[];
     capturedAt: string;
   } | null;
   yourPrice: { suggested: number | null; target: number | null };

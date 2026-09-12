@@ -81,7 +81,7 @@ export function ProductForm({ product }: { product?: ProductDetail }) {
         router.replace(`/products/${id}`);
       }
     } catch (err) {
-      if (!applyApiIssues(err, setError, ['name', 'rubro', 'currency'])) {
+      if (!applyApiIssues(err, setError, ['name', 'rubro', 'radarQuery', 'currency'])) {
         setFormError(t('genericError'));
       }
     }
@@ -103,6 +103,15 @@ export function ProductForm({ product }: { product?: ProductDetail }) {
           <Field label={t('name')} placeholder={t('namePlaceholder')} error={errors.name?.message} {...register('name')} />
           <Field label={t('rubro') + opt} placeholder={t('rubroPlaceholder')} error={errors.rubro?.message} {...register('rubro')} />
           <Field label={t('currency')} maxLength={3} error={errors.currency?.message} {...register('currency')} />
+          <div className="sm:col-span-2">
+            <Field
+              label={t('radarQuery') + opt}
+              placeholder={t('radarQueryPlaceholder')}
+              hint={t('radarQueryHint')}
+              error={errors.radarQuery?.message}
+              {...register('radarQuery')}
+            />
+          </div>
           <Field label={t('outputQuantity')} inputMode="decimal" error={errors.outputQuantity?.message} {...register('outputQuantity')} />
           <Field label={t('outputUnit') + opt} list="units" placeholder={t('outputUnitPlaceholder')} error={errors.outputUnit?.message} {...register('outputUnit')} />
           <Field label={t('laborMinutes') + opt} inputMode="decimal" error={errors.laborMinutes?.message} {...register('laborMinutes')} />

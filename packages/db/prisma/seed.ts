@@ -170,6 +170,9 @@ async function seedGlobalSettings() {
     'scraper.top_n_nightly': 100,
     'scraper.result_ttl_hours': 24,
     'scraper.outlier_trim_pct': 0.1, // recorta 10% extremos antes de la mediana
+    // sin 'scraper.radar_links_per_source': por default se guardan TODOS los
+    // ítems encontrados por fuente en el radar (tabla "ver todos" del frontend).
+    // Sólo definir esta clave si se quiere volver a limitar por fuente.
     // Rubro (del insumo/producto) → alias. Acota qué fuentes se raspan:
     // una fuente con `config.rubros=['gastronomia']` no se consulta para muebles.
     'scraper.rubro_aliases': {
@@ -177,6 +180,16 @@ async function seedGlobalSettings() {
       muebles: ['muebles', 'carpinteria', 'madera', 'melamina', 'ferreteria', 'construccion', 'closet', 'cocina'],
       confeccion: ['confeccion', 'textil', 'textiles', 'costura', 'ropa', 'avios', 'sastreria', 'bordado'],
     },
+    // Menaje/decoración a excluir de CUALQUIER búsqueda (no es por producto):
+    // el mismo query genérico ("pan", "queso"...) también matchea sus
+    // utensilios/accesorios ("Cuchillo de Pan", "Molde para Pan"). Agregar acá
+    // según se detecten nuevos casos — no hace falta tocar código ni desplegar.
+    'scraper.accessory_noise_words': [
+      'cuchillo', 'cuchillos', 'plato', 'platos', 'tostador', 'tostadora', 'tostadoras',
+      'canasta', 'canastas', 'sanduchera', 'sanducheras', 'rebanadora', 'rebanadoras',
+      'contenedor', 'contenedores', 'cuadro', 'cuadros', 'taza', 'tazas', 'mug', 'mugs',
+      'lonchera', 'loncheras', 'tabla',
+    ],
 
     // Boletas / OCR
     'receipts.retention_days': 365,

@@ -544,6 +544,10 @@ model Product {
   slug            String?
   rubro           String?
   description     String?
+  // Término de búsqueda curado para el radar de mercado (scope=FINAL_PRODUCT).
+  // Si es null, el radar usa `name` — útil cuando el nombre del producto es
+  // demasiado genérico ("Pan") para una búsqueda de mercado específica.
+  radarQuery      String?
   targetMarginPct Decimal?      @db.Decimal(6, 4) // meta de margen (fracción)
   targetPrice     Decimal?      @db.Decimal(14, 4) // precio de mercado objetivo
   currency        String        @default("PEN")
@@ -829,6 +833,10 @@ model MarketPrice {
   sampleSize   Int
 
   sourceBreakdown Json // { mercadolibre: 12, sodimac: 5, ... }
+  // Un producto encontrado por fuente (el más cercano a la mediana), para que
+  // el radar pueda linkear "ver en Plaza Vea" al ítem real que se raspó.
+  // [{ source, title, price, url }]. Null en filas de antes de este campo.
+  sampleLinks     Json?
   scrapingJobId   String?  @db.Uuid
   capturedAt      DateTime @default(now())
 

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { CostingResult } from '@fijaprecio/shared-types';
+import type { CostingResult, SampleLink } from '@fijaprecio/shared-types';
 import type { Prisma } from '@fijaprecio/db';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AppConfigService } from '../config/app-config.service.js';
@@ -42,12 +42,13 @@ export class CostingService {
     engineInput: EngineInput;
     engineConfig: EngineConfig;
     marketMedians: Record<string, number | null>;
+    marketSampleLinks: Record<string, SampleLink[]>;
   }> {
-    const [{ engineInput, marketMedians }, engineConfig] = await Promise.all([
+    const [{ engineInput, marketMedians, marketSampleLinks }, engineConfig] = await Promise.all([
       this.buildEngineInput(orgId, productId),
       this.loadConfig(orgId),
     ]);
-    return { engineInput, engineConfig, marketMedians };
+    return { engineInput, engineConfig, marketMedians, marketSampleLinks };
   }
 
   /** Costea y guarda un CostingSnapshot auditable. */
@@ -119,7 +120,10 @@ export class CostingService {
           .filter((id): id is string => id != null),
       ),
     ];
-    let consensusByCanonical = new Map<string, { median: number; confidence: number }>();
+    let consensusByCanonical = new Map<
+      string,
+      { median: number; confidence: number; sampleLinks: SampleLink[] }
+    >();
     let minConfidenceToUse = 1;
     if (canonicalIds.length > 0) {
       const [rows, minShow] = await Promise.all([
@@ -130,7 +134,7 @@ export class CostingService {
             scope: 'INPUT',
             currency: product.currency,
           },
-          select: { canonicalInputId: true, median: true, confidence: true },
+          select: { canonicalInputId: true, median: true, confidence: true, sampleLinks: true },
         }),
         this.config.getGlobal('consensus.confidence_min_to_show'),
       ]);
@@ -138,18 +142,24 @@ export class CostingService {
       consensusByCanonical = new Map(
         rows.map((r) => [
           r.canonicalInputId,
-          { median: r.median.toNumber(), confidence: r.confidence.toNumber() },
+          {
+            median: r.median.toNumber(),
+            confidence: r.confidence.toNumber(),
+            sampleLinks: (r.sampleLinks ?? []) as unknown as SampleLink[],
+          },
         ]),
       );
     }
 
     const marketMedians: Record<string, number | null> = {};
+    const marketSampleLinks: Record<string, SampleLink[]> = {};
 
     const lines: EngineLine[] = recipe.lines.map((l) => {
       const consensus = l.orgInput.canonicalInputId
         ? consensusByCanonical.get(l.orgInput.canonicalInputId)
         : undefined;
       marketMedians[l.id] = consensus?.median ?? null;
+      marketSampleLinks[l.id] = consensus?.sampleLinks ?? [];
 
       let unitCost = 0;
       let priceSource: PriceSource = 'missing';
@@ -192,7 +202,7 @@ export class CostingService {
       targetMarginPct: dec(product.targetMarginPct),
     };
 
-    return { product, recipe, engineInput, marketMedians };
+    return { product, recipe, engineInput, marketMedians, marketSampleLinks };
   }
 
   private hashInputs(input: EngineInput, config: EngineConfig): string {

@@ -10,6 +10,7 @@
  * "cierre de brecha" se resuelve exacto con 2 evaluaciones del motor: el baseline
  * y la misma entrada con ese knob en 0 (para obtener la pendiente).
  */
+import type { SampleLink } from '@fijaprecio/shared-types';
 import {
   computeCosting,
   type EngineComponent,
@@ -33,6 +34,10 @@ export interface SensitivityDriver {
   feasibleAlone: boolean; // reducción ≤ 100%
   /** Mediana de mercado del consenso (se llena cuando exista ese módulo). */
   marketMedianPrice: number | null;
+  /** Ofertas reales detrás de la mediana — solo cuando conviene mirarlas (ver
+   *  `marketHint`: el mercado ofrece algo más barato que el precio actual).
+   *  null => sin "ver opciones" en la UI, aunque haya datos de consenso. */
+  marketSampleLinks: SampleLink[] | null;
 }
 
 export interface SensitivityResult {
@@ -65,10 +70,20 @@ function unitCostWith(
   return computeCosting({ ...input, lines, components }, config).unitCost;
 }
 
+/** ¿Vale la pena mostrarle al usuario las ofertas detrás de la mediana? Solo
+ *  cuando el mercado ofrece este insumo más barato que lo que paga hoy. */
+function marketOffersCheaperOption(
+  marketMedianPrice: number | null,
+  currentUnitPrice: number | null,
+): boolean {
+  return marketMedianPrice != null && currentUnitPrice != null && marketMedianPrice < currentUnitPrice;
+}
+
 export function analyzeSensitivity(
   input: EngineInput,
   config: EngineConfig,
   marketMedians: Record<string, number | null> = {},
+  marketSampleLinks: Record<string, SampleLink[]> = {},
 ): SensitivityResult {
   const baseline = computeCosting(input, config);
   const { unitCost, targetCost, costGap, currency } = baseline;
@@ -101,6 +116,8 @@ export function analyzeSensitivity(
     }
 
     const feasibleAlone = gapCloseReductionPct == null || gapCloseReductionPct <= 1;
+    const currentUnitPrice = isInput ? round(knobValue) : null;
+    const marketMedianPrice = isInput ? (marketMedians[bl.ref] ?? null) : null;
 
     return {
       ref: bl.ref,
@@ -108,12 +125,16 @@ export function analyzeSensitivity(
       kind: bl.kind,
       unitCost: bl.amount,
       contributionPct: bl.pctOfTotal,
-      currentUnitPrice: isInput ? round(knobValue) : null,
+      currentUnitPrice,
       priceSource: bl.priceSource,
       gapCloseReductionPct,
       gapCloseUnitPrice,
       feasibleAlone,
-      marketMedianPrice: isInput ? (marketMedians[bl.ref] ?? null) : null,
+      marketMedianPrice,
+      marketSampleLinks:
+        isInput && marketOffersCheaperOption(marketMedianPrice, currentUnitPrice)
+          ? (marketSampleLinks[bl.ref] ?? null)
+          : null,
     };
   });
 
@@ -136,14 +157,8 @@ function pct(n: number): string {
 
 /** "El mercado reporta ese insumo cerca de X" cuando la mediana ayuda al recorte. */
 function marketHint(d: SensitivityDriver): string {
-  if (
-    d.marketMedianPrice == null ||
-    d.currentUnitPrice == null ||
-    d.marketMedianPrice >= d.currentUnitPrice
-  ) {
-    return '';
-  }
-  return ` El mercado reporta ese insumo cerca de ${round(d.marketMedianPrice)}.`;
+  if (!marketOffersCheaperOption(d.marketMedianPrice, d.currentUnitPrice)) return '';
+  return ` El mercado reporta ese insumo cerca de ${round(d.marketMedianPrice as number)}.`;
 }
 
 function buildHeadline(

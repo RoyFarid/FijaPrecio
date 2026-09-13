@@ -3,7 +3,7 @@ import type { CatalogMatch } from '@fijaprecio/shared-types';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AppConfigService } from '../config/app-config.service.js';
 import { normalizeInputName } from './normalize.js';
-import type { CreateCanonicalInput } from './dto.js';
+import type { CreateCanonicalInput, UpdateCanonicalInput } from './dto.js';
 
 export type { CatalogMatch };
 
@@ -81,6 +81,7 @@ export class CatalogService {
         categoryId: dto.categoryId ?? null,
         description: dto.description ?? null,
         status: dto.status ?? autocreateStatus,
+        radarQuery: dto.radarQuery ?? null,
         createdById: userId,
         aliases: {
           create: await Promise.all(
@@ -95,6 +96,30 @@ export class CatalogService {
       select: { id: true },
     });
     return { id: row.id };
+  }
+
+  /** PATCH de un insumo canónico (catálogo global, no por tenant). */
+  async updateCanonicalInput(id: string, dto: UpdateCanonicalInput) {
+    const exists = await this.prisma.client.canonicalInput.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!exists) throw new NotFoundException('Insumo canónico no encontrado');
+
+    await this.prisma.client.canonicalInput.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined && {
+          name: dto.name,
+          normalizedName: await this.normalize(dto.name),
+        }),
+        ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.status !== undefined && { status: dto.status }),
+        ...(dto.radarQuery !== undefined && { radarQuery: dto.radarQuery }),
+      },
+    });
+    return this.getCanonicalInput(id);
   }
 
   async getCanonicalInput(id: string) {

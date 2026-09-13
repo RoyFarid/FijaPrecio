@@ -68,6 +68,9 @@ export class PriceObservationsService {
       source: o.source,
       sourceRef: o.sourceRef ?? null,
       observedAt: o.observedAt ? new Date(o.observedAt) : new Date(),
+      title: o.title ?? null,
+      url: o.url ?? null,
+      storeSlug: o.storeSlug ?? null,
     }));
 
     const res = await this.prisma.client.priceObservation.createMany({
@@ -125,8 +128,11 @@ export class PriceObservationsService {
   }
 
   /**
-   * Insumos canónicos que vale la pena raspar: ACTIVE, referenciados por al menos
-   * un `OrgInput` vivo, ordenados por consenso más viejo (o inexistente) primero.
+   * Insumos canónicos que vale la pena raspar: referenciados por al menos un
+   * `OrgInput` vivo, ordenados por consenso más viejo (o inexistente) primero.
+   * ACTIVE y PENDING_REVIEW entran — un insumo recién creado por una receta
+   * nace en PENDING_REVIEW y no debe esperar la revisión manual para empezar
+   * a juntar precios de mercado. MERGED/REJECTED quedan afuera (superseded).
    */
   async scrapeTargets(limit: number): Promise<ScrapeTarget[]> {
     // raw + JOIN a OrgInput (tabla de tenant) → asSystem para saltar RLS.
@@ -134,16 +140,17 @@ export class PriceObservationsService {
       tx.$queryRaw<
         Array<{ canonicalInputId: string; query: string; baseUnit: string; rubro: string | null }>
       >`
-        SELECT ci.id AS "canonicalInputId", ci.name AS query, ci."baseUnit" AS "baseUnit",
-               cat.rubro AS rubro
+        SELECT ci.id AS "canonicalInputId",
+               COALESCE(ci."radarQuery", ci.name) AS query,
+               ci."baseUnit" AS "baseUnit", cat.rubro AS rubro
         FROM "CanonicalInput" ci
         JOIN "OrgInput" oi
           ON oi."canonicalInputId" = ci.id AND oi."archivedAt" IS NULL
         LEFT JOIN "PriceConsensus" pc
           ON pc."canonicalInputId" = ci.id AND pc.scope = 'INPUT'
         LEFT JOIN "InputCategory" cat ON cat.id = ci."categoryId"
-        WHERE ci.status = 'ACTIVE'
-        GROUP BY ci.id, ci.name, ci."baseUnit", cat.rubro
+        WHERE ci.status IN ('ACTIVE', 'PENDING_REVIEW')
+        GROUP BY ci.id, ci.name, ci."radarQuery", ci."baseUnit", cat.rubro
         ORDER BY MIN(pc."updatedAt") ASC NULLS FIRST
         LIMIT ${limit}`,
     );

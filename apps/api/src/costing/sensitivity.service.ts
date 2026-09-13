@@ -8,8 +8,9 @@ export class SensitivityService {
   constructor(private readonly costing: CostingService) {}
 
   async analyzeForProduct(orgId: string, productId: string): Promise<SensitivityResult> {
-    const { engineInput, engineConfig, marketMedians } = await this.costing.prepare(orgId, productId);
-    const result = analyzeSensitivity(engineInput, engineConfig, marketMedians);
+    const { engineInput, engineConfig, marketMedians, marketSampleLinks } =
+      await this.costing.prepare(orgId, productId);
+    const result = analyzeSensitivity(engineInput, engineConfig, marketMedians, marketSampleLinks);
     return { ...result, computedAt: new Date().toISOString() };
   }
 }

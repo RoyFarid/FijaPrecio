@@ -14,5 +14,16 @@ export const createCanonicalInputSchema = z.object({
   description: z.string().trim().max(500).optional(),
   status: z.nativeEnum(CanonicalInputStatus).optional(),
   aliases: z.array(z.string().trim().min(2).max(160)).max(20).optional(),
+  // Término de búsqueda curado para el scraping — ver comentario en schema.prisma.
+  radarQuery: z.string().trim().min(2).max(160).optional(),
 });
 export type CreateCanonicalInput = z.infer<typeof createCanonicalInputSchema>;
+
+export const updateCanonicalInputSchema = z.object({
+  name: z.string().trim().min(2).max(160).optional(),
+  categoryId: z.string().uuid().nullable().optional(),
+  description: z.string().trim().max(500).nullable().optional(),
+  status: z.nativeEnum(CanonicalInputStatus).optional(),
+  radarQuery: z.string().trim().min(2).max(160).nullable().optional(),
+});
+export type UpdateCanonicalInput = z.infer<typeof updateCanonicalInputSchema>;

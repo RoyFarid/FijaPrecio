@@ -105,6 +105,21 @@ describe('analyzeSensitivity', () => {
     expect(r.headline).toContain('mercado');
   });
 
+  it('solo expone marketSampleLinks cuando el mercado ofrece algo más barato', () => {
+    const links = [{ source: 's', title: 'Tela X', price: 13, url: 'https://x' }];
+    // tela: mediana 13 < precio actual 20 → hay oportunidad, se exponen los links
+    // hilo: mediana 5 > precio actual 2 → no hay oportunidad, no se exponen
+    const r = analyzeSensitivity(scenario(), CONFIG, { tela: 13, hilo: 5 }, { tela: links, hilo: links });
+    expect(r.drivers.find((d) => d.ref === 'tela')!.marketSampleLinks).toEqual(links);
+    expect(r.drivers.find((d) => d.ref === 'hilo')!.marketSampleLinks).toBeNull();
+    expect(r.drivers.find((d) => d.ref === 'labor')!.marketSampleLinks).toBeNull(); // componente
+  });
+
+  it('sin datos de sampleLinks para ese insumo, marketSampleLinks es null aunque haya oportunidad', () => {
+    const r = analyzeSensitivity(scenario(), CONFIG, { tela: 13 });
+    expect(r.drivers.find((d) => d.ref === 'tela')!.marketSampleLinks).toBeNull();
+  });
+
   it('con merma y varias unidades, el round-trip sigue exacto', () => {
     const input = scenario({
       outputQuantity: 12,

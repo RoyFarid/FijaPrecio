@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -13,8 +14,10 @@ import { ZodBody } from '../common/zod-validation.pipe.js';
 import {
   catalogSearchSchema,
   createCanonicalInputSchema,
+  updateCanonicalInputSchema,
   type CatalogSearchQuery,
   type CreateCanonicalInput,
+  type UpdateCanonicalInput,
 } from './dto.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { Public } from '../auth/public.decorator.js';
@@ -44,6 +47,14 @@ export class CatalogController {
     @Body(new ZodBody(createCanonicalInputSchema)) dto: CreateCanonicalInput,
   ): Promise<{ id: string }> {
     return this.catalog.createCanonicalInput(dto, userId);
+  }
+
+  @Patch('inputs/:id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodBody(updateCanonicalInputSchema)) dto: UpdateCanonicalInput,
+  ) {
+    return this.catalog.updateCanonicalInput(id, dto);
   }
 
   @Get('categories')

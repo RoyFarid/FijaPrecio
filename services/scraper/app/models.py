@@ -124,6 +124,11 @@ class ObservationOut(BaseModel):
     source: Literal["SCRAPE"] = "SCRAPE"
     sourceRef: str
     observedAt: str
+    # título/link del ítem real y slug de la tienda — para el "ver opciones"
+    # de Sensibilidad (mismo espíritu que MarketPrice.sampleLinks del radar).
+    title: str | None = None
+    url: str | None = None
+    storeSlug: str | None = None
 
 
 class ObservationBatch(BaseModel):

@@ -288,6 +288,9 @@ def build_batch(
             region=region,
             sourceRef=f"{source_slug}:{run_key}:{_item_key(item)}",
             observedAt=now,
+            title=item.title or None,
+            url=item.url,
+            storeSlug=source_slug,
         )
         for price, item in priced
         if lo <= price <= hi

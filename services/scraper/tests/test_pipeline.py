@@ -101,6 +101,10 @@ def test_build_batch_trims_outliers_and_builds_source_ref() -> None:
     )
     assert all(o.unit == "kg" for o in batch.observations)
     assert all(o.scope == "INPUT" and o.source == "SCRAPE" for o in batch.observations)
+    # título/link/tienda para el "ver opciones" de Sensibilidad
+    assert all(o.storeSlug == "mercadolibre-pe" for o in batch.observations)
+    assert all(o.title and o.title.startswith("Harina") for o in batch.observations)
+    assert all(o.url and o.url.startswith("https://x/") for o in batch.observations)
 
 
 def test_aggregate_market_price() -> None:

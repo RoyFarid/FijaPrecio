@@ -369,6 +369,11 @@ model CanonicalInput {
   status         CanonicalInputStatus @default(PENDING_REVIEW)
   mergedIntoId   String?              @db.Uuid // si status=MERGED
   description    String?
+  // Término de búsqueda curado para el scraping (scope=INPUT). Si es null, se
+  // usa `name` — útil cuando el nombre es ambiguo/genérico ("Harina" matchea
+  // harina de trigo, de maca, de lúcuma...) y conviene acotar la búsqueda
+  // ("harina de trigo"). Mismo rol que Product.radarQuery para FINAL_PRODUCT.
+  radarQuery     String?
   attributes     Json                 @default("{}") // { titulo, composicion, calibre, ... }
   createdById    String?              @db.Uuid // ref suelta -> User
   createdAt      DateTime             @default(now())
@@ -769,6 +774,12 @@ model PriceObservation {
   // "{dataset}:{fecha}:{fila}" => re-scrapear otro día crea una obs nueva, pero
   // reintentar la MISMA corrida es idempotente. NULL para entradas manuales.
   sourceRef          String?
+  // Para armar el "ver opciones" de Sensibilidad (solo SCRAPE trae esto hoy):
+  // título/link del ítem real y slug de la tienda (p.ej. "sodimac-pe"). `source`
+  // arriba es el TIPO de observación (MANUAL/SCRAPE/...), no la tienda.
+  title              String?
+  url                String?
+  storeSlug          String?
   reporterReputation Int? // snapshot de reputación al momento de aportar
   weight             Decimal?    @db.Decimal(6, 4) // peso calculado (cache)
 
@@ -805,6 +816,9 @@ model PriceConsensus {
   mad        Decimal @db.Decimal(14, 6) // median absolute deviation
   sampleSize Int
   confidence Decimal @db.Decimal(5, 4) // 0..1
+  // Ítems reales (fuente/título/precio/link) detrás de la mediana, para el
+  // "ver opciones" de Sensibilidad — mismo shape que MarketPrice.sampleLinks.
+  sampleLinks Json?
 
   updatedAt DateTime @updatedAt
 

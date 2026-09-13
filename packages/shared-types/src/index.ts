@@ -28,6 +28,16 @@ export {
   NotificationChannel,
 } from '@fijaprecio/db';
 
+/** Un ítem real encontrado (fuente, título, precio, link) para "ver en X" —
+ *  se usa tanto en el radar de producto final como en el consenso de insumos. */
+export const sampleLinkSchema = z.object({
+  source: z.string(),
+  title: z.string(),
+  price: z.number(),
+  url: z.string(),
+});
+export type SampleLink = z.infer<typeof sampleLinkSchema>;
+
 // --- Resultado del motor de costeo (contrato api -> web) ---------------------
 
 /** Origen del precio unitario de una línea de costeo (distinto de `PriceSource`
@@ -82,6 +92,10 @@ export const sensitivityDriverSchema = z.object({
   gapCloseUnitPrice: z.number().nullable(),
   feasibleAlone: z.boolean(),
   marketMedianPrice: z.number().nullable(),
+  // Ofertas reales detrás de la mediana (fuente/título/precio/link), solo
+  // cuando el mercado ofrece algo más barato que el precio actual — ver
+  // `analyzeSensitivity`/`marketHint`. null/[] => sin "ver opciones" en la UI.
+  marketSampleLinks: z.array(sampleLinkSchema).nullable().default(null),
 });
 export type SensitivityDriver = z.infer<typeof sensitivityDriverSchema>;
 
@@ -213,6 +227,11 @@ export const priceObservationInputSchema = z.object({
   // `{ offset: true }`: los clientes (scraper/OCR/gov en Python) mandan
   // `...+00:00`, no `...Z` — ambos son ISO 8601 válidos.
   observedAt: z.string().datetime({ offset: true }).optional(),
+  // título/link del ítem real y slug de la tienda — para el "ver opciones"
+  // de Sensibilidad. Solo SCRAPE los trae hoy.
+  title: z.string().optional(),
+  url: z.string().optional(),
+  storeSlug: z.string().optional(),
 });
 export type PriceObservationInput = z.infer<typeof priceObservationInputSchema>;
 
@@ -223,15 +242,6 @@ export const priceObservationBatchSchema = z.object({
 export type PriceObservationBatch = z.infer<typeof priceObservationBatchSchema>;
 
 // --- Radar de competencia (producto final) --------------------------------
-
-/** Un ítem real encontrado (el más cercano a la mediana) para linkear "ver en X". */
-export const sampleLinkSchema = z.object({
-  source: z.string(),
-  title: z.string(),
-  price: z.number(),
-  url: z.string(),
-});
-export type SampleLink = z.infer<typeof sampleLinkSchema>;
 
 /** Snapshot agregado que publica el scraper (POST /v1/internal/market-prices). */
 export const marketPriceSnapshotSchema = z.object({

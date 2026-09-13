@@ -229,7 +229,14 @@
     "feasibleYes": "Sí",
     "feasibleNo": "No basta",
     "marketHint": "El mercado reporta este insumo cerca de {price}.",
-    "reductionNeeded": "Baja de {pct} en total para llegar a la meta."
+    "reductionNeeded": "Baja de {pct} en total para llegar a la meta.",
+    "viewOptions": "Ver opciones",
+    "hideOptions": "Ocultar opciones",
+    "optionsSource": "Fuente",
+    "optionsProduct": "Producto",
+    "optionsPrice": "Precio",
+    "optionsView": "Ver",
+    "optionsNote": "Ordenado de más barato a más caro. De lo que encontró el scraping recientemente."
   },
   "radar": {
     "title": "Radar de mercado",

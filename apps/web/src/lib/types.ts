@@ -154,6 +154,7 @@ export interface SensitivityDriver {
   gapCloseUnitPrice: number | null;
   feasibleAlone: boolean;
   marketMedianPrice: number | null;
+  marketSampleLinks: MarketSampleLink[] | null;
 }
 
 export interface SensitivityResult {

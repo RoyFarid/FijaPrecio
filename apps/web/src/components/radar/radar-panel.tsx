@@ -10,20 +10,8 @@ import { VerdictBadge } from './verdict-badge';
 import { MarketScale } from './market-scale';
 import { IconExternalLink } from '../icons';
 import { cn } from '../../lib/cn';
+import { sourceLabel } from '../../lib/store-labels';
 import { useRadar, useRadarHistory } from '../../hooks/use-costing';
-
-// Nombre lindo para las fuentes de scraping — el slug es lo único que hay en la
-// data. Sin entrada acá, se cae al slug tal cual (nunca queda sin etiqueta).
-const SOURCE_LABELS: Record<string, string> = {
-  promart: 'Promart',
-  'sodimac-pe': 'Sodimac',
-  'plaza-vea': 'Plaza Vea',
-  metro: 'Metro',
-  wong: 'Wong',
-  tottus: 'Tottus',
-  'mercadolibre-pe': 'MercadoLibre',
-};
-const sourceLabel = (slug: string): string => SOURCE_LABELS[slug] ?? slug;
 
 // Recharts es pesado (~100 kB) y sólo aparece en la pestaña Radar con historial.
 const RadarHistoryChart = dynamic(

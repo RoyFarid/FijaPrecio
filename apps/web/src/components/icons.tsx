@@ -137,3 +137,11 @@ export function IconTrendUp(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function IconChevronDown(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}

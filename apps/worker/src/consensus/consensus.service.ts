@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { ConsensusRecalcJob } from '@fijaprecio/shared-types';
+import type { ConsensusRecalcJob, SampleLink } from '@fijaprecio/shared-types';
+import type { Prisma } from '@fijaprecio/db';
 import { PrismaService } from '../prisma.js';
 import { loadConsensusConfig } from './config.js';
 import { computeConsensus, type ConsensusObservation } from './engine.js';
@@ -45,6 +46,9 @@ export class ConsensusService {
         source: true,
         observedAt: true,
         reporterReputation: true,
+        title: true,
+        url: true,
+        storeSlug: true,
       },
     });
 
@@ -63,6 +67,21 @@ export class ConsensusService {
       return { status: result.status, sampleSize: result.sampleSize };
     }
 
+    // Ofertas reales detrás de la mediana — solo las ACEPTADAS (no outliers) y
+    // solo las que traen tienda+link (hoy, solo SCRAPE). Sin tope, ordenadas
+    // por precio — mismo criterio que MarketPrice.sampleLinks del radar.
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const sampleLinks: SampleLink[] = result.acceptedIds
+      .map((id) => byId.get(id))
+      .filter((r): r is (typeof rows)[number] => r != null && r.url != null && r.storeSlug != null)
+      .map((r) => ({
+        source: r.storeSlug!,
+        title: r.title ?? '',
+        price: r.price.toNumber(),
+        url: r.url!,
+      }))
+      .sort((a, b) => a.price - b.price);
+
     const s = result.stats;
     const values = {
       median: s.median,
@@ -72,6 +91,7 @@ export class ConsensusService {
       mad: s.mad,
       sampleSize: result.sampleSize,
       confidence: s.confidence,
+      sampleLinks: sampleLinks as unknown as Prisma.InputJsonValue,
     };
     await this.prisma.client.priceConsensus.upsert({
       where: { canonicalInputId_region_scope_currency: tuple },

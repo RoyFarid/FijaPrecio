@@ -105,18 +105,23 @@ describe('analyzeSensitivity', () => {
     expect(r.headline).toContain('mercado');
   });
 
-  it('solo expone marketSampleLinks cuando el mercado ofrece algo más barato', () => {
+  it('expone marketSampleLinks siempre que haya datos de scraping, sin importar si conviene', () => {
     const links = [{ source: 's', title: 'Tela X', price: 13, url: 'https://x' }];
-    // tela: mediana 13 < precio actual 20 → hay oportunidad, se exponen los links
-    // hilo: mediana 5 > precio actual 2 → no hay oportunidad, no se exponen
+    // tela: mediana 13 < precio actual 20 (hay ahorro) — igual se muestran los links
+    // hilo: mediana 5 > precio actual 2 (no hay ahorro) — se muestran igual, como el radar
     const r = analyzeSensitivity(scenario(), CONFIG, { tela: 13, hilo: 5 }, { tela: links, hilo: links });
     expect(r.drivers.find((d) => d.ref === 'tela')!.marketSampleLinks).toEqual(links);
-    expect(r.drivers.find((d) => d.ref === 'hilo')!.marketSampleLinks).toBeNull();
+    expect(r.drivers.find((d) => d.ref === 'hilo')!.marketSampleLinks).toEqual(links);
     expect(r.drivers.find((d) => d.ref === 'labor')!.marketSampleLinks).toBeNull(); // componente
   });
 
-  it('sin datos de sampleLinks para ese insumo, marketSampleLinks es null aunque haya oportunidad', () => {
+  it('sin datos de sampleLinks para ese insumo, marketSampleLinks es null', () => {
     const r = analyzeSensitivity(scenario(), CONFIG, { tela: 13 });
+    expect(r.drivers.find((d) => d.ref === 'tela')!.marketSampleLinks).toBeNull();
+  });
+
+  it('con un array vacío de sampleLinks, marketSampleLinks es null (no [])', () => {
+    const r = analyzeSensitivity(scenario(), CONFIG, { tela: 13 }, { tela: [] });
     expect(r.drivers.find((d) => d.ref === 'tela')!.marketSampleLinks).toBeNull();
   });
 

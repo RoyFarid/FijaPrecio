@@ -131,10 +131,10 @@ export function analyzeSensitivity(
       gapCloseUnitPrice,
       feasibleAlone,
       marketMedianPrice,
+      // Siempre visible cuando hay datos de scraping — igual que la tabla del
+      // radar de producto final (dejó de ser condicional a "conviene mirarlo").
       marketSampleLinks:
-        isInput && marketOffersCheaperOption(marketMedianPrice, currentUnitPrice)
-          ? (marketSampleLinks[bl.ref] ?? null)
-          : null,
+        isInput && marketSampleLinks[bl.ref]?.length ? (marketSampleLinks[bl.ref] ?? null) : null,
     };
   });
 

@@ -1,9 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { CatalogMatch } from '@fijaprecio/shared-types';
+import type { Prisma } from '@fijaprecio/db';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AppConfigService } from '../config/app-config.service.js';
 import { normalizeInputName } from './normalize.js';
-import type { CreateCanonicalInput, UpdateCanonicalInput } from './dto.js';
+import type {
+  CreateCanonicalInput,
+  CreateInputCategoryAttribute,
+  UpdateCanonicalInput,
+} from './dto.js';
 
 export type { CatalogMatch };
 
@@ -117,9 +122,38 @@ export class CatalogService {
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.status !== undefined && { status: dto.status }),
         ...(dto.radarQuery !== undefined && { radarQuery: dto.radarQuery }),
+        ...(dto.attributes !== undefined && {
+          attributes: dto.attributes as Prisma.InputJsonValue,
+        }),
       },
     });
     return this.getCanonicalInput(id);
+  }
+
+  async createCategoryAttribute(
+    categoryId: string,
+    dto: CreateInputCategoryAttribute,
+  ): Promise<{ id: string }> {
+    const category = await this.prisma.client.inputCategory.findUnique({
+      where: { id: categoryId },
+      select: { id: true },
+    });
+    if (!category) throw new NotFoundException('Categoría no encontrada');
+
+    return this.prisma.client.inputCategoryAttribute.create({
+      data: {
+        categoryId,
+        key: dto.key,
+        label: dto.label,
+        valueType: dto.valueType,
+        unit: dto.unit ?? null,
+        options: dto.options ?? undefined,
+        required: dto.required,
+        helpText: dto.helpText ?? null,
+        sortOrder: dto.sortOrder,
+      },
+      select: { id: true },
+    });
   }
 
   async getCanonicalInput(id: string) {

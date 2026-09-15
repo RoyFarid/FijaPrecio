@@ -14,9 +14,11 @@ import { ZodBody } from '../common/zod-validation.pipe.js';
 import {
   catalogSearchSchema,
   createCanonicalInputSchema,
+  createInputCategoryAttributeSchema,
   updateCanonicalInputSchema,
   type CatalogSearchQuery,
   type CreateCanonicalInput,
+  type CreateInputCategoryAttribute,
   type UpdateCanonicalInput,
 } from './dto.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
@@ -60,6 +62,14 @@ export class CatalogController {
   @Get('categories')
   categories() {
     return this.catalog.listCategories();
+  }
+
+  @Post('categories/:id/attributes')
+  createCategoryAttribute(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodBody(createInputCategoryAttributeSchema)) dto: CreateInputCategoryAttribute,
+  ): Promise<{ id: string }> {
+    return this.catalog.createCategoryAttribute(id, dto);
   }
 }
 

@@ -22,6 +22,9 @@ export class ProductsService {
 
   async create(orgId: string, userId: string, dto: CreateProductInput) {
     const canonicalByName = await this.resolveCanonicals(dto.recipe);
+    // el rubro explícito manda; si no viene, se hereda de la categoría elegida
+    // (así el filtrado de fuentes del scraper sigue funcionando sin cambios).
+    const rubro = dto.rubro ?? (await this.categoryRubro(dto.categoryId));
 
     const created = await this.prisma.withRls(async (tx) => {
       const product = await tx.product.create({
@@ -29,7 +32,9 @@ export class ProductsService {
           organizationId: orgId,
           name: dto.name,
           slug: await this.uniqueSlug(tx, orgId, slugify(dto.name)),
-          rubro: dto.rubro ?? null,
+          rubro,
+          categoryId: dto.categoryId ?? null,
+          attributes: (dto.attributes ?? {}) as Prisma.InputJsonValue,
           radarQuery: dto.radarQuery ?? null,
           currency: dto.currency,
           targetPrice: dto.targetPrice ?? null,
@@ -63,9 +68,16 @@ export class ProductsService {
   /** PATCH de los datos del producto (no la receta). */
   async update(orgId: string, productId: string, dto: UpdateProductInput) {
     return this.prisma.withRls(async (tx) => {
-      const data: Prisma.ProductUpdateInput = {};
+      const data: Prisma.ProductUncheckedUpdateInput = {};
       if (dto.name !== undefined) data.name = dto.name;
       if (dto.rubro !== undefined) data.rubro = dto.rubro;
+      if (dto.categoryId !== undefined) {
+        data.categoryId = dto.categoryId;
+        // igual que en create(): si cambia la categoría y no vino un rubro
+        // explícito en el mismo PATCH, se hereda el de la nueva categoría.
+        if (dto.rubro === undefined) data.rubro = await this.categoryRubro(dto.categoryId ?? undefined);
+      }
+      if (dto.attributes !== undefined) data.attributes = dto.attributes as Prisma.InputJsonValue;
       if (dto.radarQuery !== undefined) data.radarQuery = dto.radarQuery;
       if (dto.currency !== undefined) data.currency = dto.currency;
       if (dto.targetPrice !== undefined) data.targetPrice = dto.targetPrice;
@@ -237,6 +249,8 @@ export class ProductsService {
       name: product.name,
       slug: product.slug,
       rubro: product.rubro,
+      categoryId: product.categoryId,
+      attributes: product.attributes as Record<string, unknown>,
       radarQuery: product.radarQuery,
       description: product.description,
       currency: product.currency,
@@ -327,6 +341,15 @@ export class ProductsService {
         },
       },
     });
+  }
+
+  private async categoryRubro(categoryId: string | null | undefined): Promise<string | null> {
+    if (!categoryId) return null;
+    const category = await this.prisma.client.productCategory.findUnique({
+      where: { id: categoryId },
+      select: { rubro: true },
+    });
+    return category?.rubro ?? null;
   }
 
   private async uniqueSlug(

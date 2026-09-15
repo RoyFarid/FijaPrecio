@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { QueueModule } from './queue/queue.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
+import { ProductCategoriesModule } from './product-categories/product-categories.module.js';
 import { ProductsModule } from './products/products.module.js';
 import { CostingModule } from './costing/costing.module.js';
 import { ScenariosModule } from './scenarios/scenarios.module.js';
@@ -37,6 +38,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     AppConfigModule,
     AuthModule,
     CatalogModule,
+    ProductCategoriesModule,
     ProductsModule,
     CostingModule,
     ScenariosModule,

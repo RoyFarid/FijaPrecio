@@ -34,8 +34,15 @@ const recipeSchema = z.object({
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(160),
   rubro: z.string().trim().max(60).optional(),
+  // Tipo de producto (árbol ProductCategory) — al elegirlo, el rubro y la
+  // plantilla de búsqueda de la categoría se heredan automáticamente.
+  categoryId: z.string().uuid().optional(),
+  // Valores de los atributos que pide `ProductCategory.attributeDefs`
+  // ({ tipoHarina: "integral", peso: 500, pesoUnidad: "g" }).
+  attributes: z.record(z.string(), z.unknown()).optional(),
   // Término de búsqueda curado para el radar de mercado (scope=FINAL_PRODUCT).
-  // Si no se manda, el radar busca por `name` — hace falta cuando el nombre es
+  // Si no se manda, el radar arma la query con la plantilla de la categoría +
+  // atributos, o si no hay, busca por `name` — hace falta cuando el nombre es
   // demasiado genérico ("Pan") para una búsqueda de mercado específica.
   radarQuery: z.string().trim().min(1).max(160).optional(),
   currency: z.string().length(3).default('PEN'),
@@ -50,6 +57,8 @@ export const updateProductSchema = z
   .object({
     name: z.string().trim().min(1).max(160).optional(),
     rubro: z.string().trim().max(60).nullable().optional(),
+    categoryId: z.string().uuid().nullable().optional(),
+    attributes: z.record(z.string(), z.unknown()).optional(),
     radarQuery: z.string().trim().min(1).max(160).nullable().optional(),
     currency: z.string().length(3).optional(),
     targetPrice: money.nullable().optional(),

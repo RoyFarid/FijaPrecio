@@ -29,6 +29,10 @@ export function productToFormValues(product?: ProductDetail | null): CreateProdu
   return {
     name: product?.name ?? '',
     rubro: product?.rubro ?? '',
+    categoryId: product?.categoryId ?? '',
+    attributes: Object.fromEntries(
+      Object.entries(product?.attributes ?? {}).map(([k, v]) => [k, String(v)]),
+    ),
     radarQuery: product?.radarQuery ?? '',
     currency: product?.currency ?? 'PEN',
     targetPrice: str(product?.targetPrice),
@@ -80,6 +84,8 @@ export function formToCreatePayload(values: CreateProductForm): CreateProductInp
   return {
     name: values.name.trim(),
     rubro: values.rubro.trim() || undefined,
+    categoryId: values.categoryId || undefined,
+    attributes: Object.keys(values.attributes).length > 0 ? values.attributes : undefined,
     radarQuery: values.radarQuery.trim() || undefined,
     currency: cleanCurrency(values.currency),
     targetPrice: num(values.targetPrice),
@@ -93,6 +99,8 @@ export function formToUpdatePayload(values: CreateProductForm): UpdateProductPay
   return {
     name: values.name.trim(),
     rubro: values.rubro.trim() || null,
+    categoryId: values.categoryId || null,
+    attributes: values.attributes,
     radarQuery: values.radarQuery.trim() || null,
     currency: cleanCurrency(values.currency),
     targetPrice: num(values.targetPrice) ?? null,

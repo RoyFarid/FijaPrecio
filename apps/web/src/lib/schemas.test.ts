@@ -4,6 +4,8 @@ import { createAlertFormSchema, createProductFormSchema } from './schemas';
 const baseProduct = {
   name: 'Torta',
   rubro: '',
+  categoryId: '',
+  attributes: {},
   radarQuery: '',
   currency: 'PEN',
   targetPrice: '',

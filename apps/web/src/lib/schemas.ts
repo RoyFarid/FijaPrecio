@@ -67,6 +67,8 @@ export type ProductComponentForm = z.infer<typeof productComponentSchema>;
 export const createProductFormSchema = z.object({
   name: z.string().trim().min(1, REQ).max(160),
   rubro: z.string().trim().max(60),
+  categoryId: z.string(),
+  attributes: z.record(z.string(), z.string()),
   radarQuery: z.string().trim().max(160),
   currency: z.string().length(3),
   targetPrice: numStr(),

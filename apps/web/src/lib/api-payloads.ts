@@ -25,6 +25,8 @@ export interface RecipePayload {
 export interface CreateProductInput {
   name: string;
   rubro?: string;
+  categoryId?: string;
+  attributes?: Record<string, unknown>;
   radarQuery?: string;
   currency: string;
   targetPrice?: number;
@@ -35,6 +37,8 @@ export interface CreateProductInput {
 export interface UpdateProductPayload {
   name?: string;
   rubro?: string | null;
+  categoryId?: string | null;
+  attributes?: Record<string, unknown>;
   radarQuery?: string | null;
   currency?: string;
   targetPrice?: number | null;

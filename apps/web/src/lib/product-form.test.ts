@@ -11,6 +11,8 @@ import type { ProductDetail } from './types';
 const form: CreateProductForm = {
   name: '  Torta  ',
   rubro: '',
+  categoryId: '',
+  attributes: {},
   radarQuery: '',
   currency: 'pen',
   targetPrice: '50',

@@ -87,11 +87,46 @@ export interface RecipeComponentView {
   value: number;
 }
 
+// --- Árbol de categorías de producto (rubro → categoría → tipo) -------------
+
+export type AttributeValueType = 'TEXT' | 'NUMBER' | 'NUMBER_WITH_UNIT' | 'ENUM' | 'BOOLEAN';
+
+export interface ProductCategoryAttributeDef {
+  id: string;
+  key: string;
+  label: string;
+  valueType: AttributeValueType;
+  unit: string | null;
+  options: string[] | null;
+  required: boolean;
+  helpText: string | null;
+  sortOrder: number;
+}
+
+export interface ProductCategoryNode {
+  id: string;
+  name: string;
+  slug: string;
+  rubro: string | null;
+  parentId: string | null;
+  hasChildren: boolean;
+}
+
+export interface ProductCategoryDetail extends ProductCategoryNode {
+  searchQueryTemplate: string | null;
+  attributeDefs: ProductCategoryAttributeDef[];
+  breadcrumb: Array<{ id: string; name: string }>;
+}
+
 export interface ProductDetail {
   id: string;
   name: string;
   slug: string | null;
   rubro: string | null;
+  /** Tipo de producto (árbol ProductCategory) — ver /product-categories. */
+  categoryId: string | null;
+  /** Valores de los atributos que pide la categoría elegida (peso, tipo de harina...). */
+  attributes: Record<string, unknown>;
   /** Término de búsqueda curado para el radar de mercado; si es null, usa `name`. */
   radarQuery: string | null;
   description: string | null;

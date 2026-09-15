@@ -29,6 +29,7 @@ import { FieldMini, SelectMini } from '../ui/field-mini';
 import { Button } from '../ui/button';
 import { Callout } from '../ui/callout';
 import { InputAutocomplete } from './input-autocomplete';
+import { CategoryPicker } from './category-picker';
 import { IconTrash } from '../icons';
 
 export function ProductForm({ product }: { product?: ProductDetail }) {
@@ -53,6 +54,7 @@ export function ProductForm({ product }: { product?: ProductDetail }) {
     register,
     control,
     setValue,
+    watch,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
@@ -60,6 +62,9 @@ export function ProductForm({ product }: { product?: ProductDetail }) {
     resolver: zodResolver(createProductFormSchema),
     defaultValues: productToFormValues(product),
   });
+
+  const categoryId = watch('categoryId');
+  const attributes = watch('attributes');
 
   const lines = useFieldArray({ control, name: 'lines' });
   const components = useFieldArray({ control, name: 'components' });
@@ -101,7 +106,6 @@ export function ProductForm({ product }: { product?: ProductDetail }) {
         <CardHeader title={t('sectionBasics')} />
         <CardBody className="grid gap-4 sm:grid-cols-2">
           <Field label={t('name')} placeholder={t('namePlaceholder')} error={errors.name?.message} {...register('name')} />
-          <Field label={t('rubro') + opt} placeholder={t('rubroPlaceholder')} error={errors.rubro?.message} {...register('rubro')} />
           <Field label={t('currency')} maxLength={3} error={errors.currency?.message} {...register('currency')} />
           <div className="sm:col-span-2">
             <Field
@@ -115,6 +119,28 @@ export function ProductForm({ product }: { product?: ProductDetail }) {
           <Field label={t('outputQuantity')} inputMode="decimal" error={errors.outputQuantity?.message} {...register('outputQuantity')} />
           <Field label={t('outputUnit') + opt} list="units" placeholder={t('outputUnitPlaceholder')} error={errors.outputUnit?.message} {...register('outputUnit')} />
           <Field label={t('laborMinutes') + opt} inputMode="decimal" error={errors.laborMinutes?.message} {...register('laborMinutes')} />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader title={t('sectionCategory')} description={t('categoryHint')} />
+        <CardBody className="space-y-4">
+          <CategoryPicker
+            categoryId={categoryId}
+            attributes={attributes}
+            onCategoryChange={(id, rubro) => {
+              setValue('categoryId', id, { shouldDirty: true });
+              if (rubro != null) setValue('rubro', rubro, { shouldDirty: true });
+            }}
+            onAttributesChange={(attrs) => setValue('attributes', attrs, { shouldDirty: true })}
+          />
+          <Field
+            label={t('rubro') + opt}
+            placeholder={t('rubroPlaceholder')}
+            hint={t('rubroHint')}
+            error={errors.rubro?.message}
+            {...register('rubro')}
+          />
         </CardBody>
       </Card>
 

@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { CostingService } from '../costing/costing.service.js';
 import { AppConfigService } from '../config/app-config.service.js';
 import { env } from '../config/env.js';
+import { resolveScrapeQuery } from '../common/query-template.js';
 import { computeRadarPosition } from './position.js';
 
 export interface MarketHistoryPoint {
@@ -130,26 +131,44 @@ export class MarketRadarService {
       tx.$queryRaw<
         Array<{
           productId: string;
-          query: string;
+          name: string;
+          radarQuery: string | null;
+          categoryTemplate: string | null;
+          attributes: Prisma.JsonValue;
           region: string;
           currency: string;
           rubro: string | null;
           baseUnit: string | null;
         }>
       >`
-        SELECT p.id AS "productId", COALESCE(p."radarQuery", p.name) AS query,
+        SELECT p.id AS "productId", p.name AS name, p."radarQuery" AS "radarQuery",
+               pc."searchQueryTemplate" AS "categoryTemplate", p.attributes AS attributes,
                o.region AS region, p.currency AS currency, p.rubro AS rubro,
                pr."outputUnit" AS "baseUnit"
         FROM "Product" p
         JOIN "Organization" o ON o.id = p."organizationId"
         LEFT JOIN "MarketPrice" mp ON mp."productId" = p.id
         LEFT JOIN "ProductRecipe" pr ON pr."productId" = p.id AND pr."isActive" = true
+        LEFT JOIN "ProductCategory" pc ON pc.id = p."categoryId"
         WHERE p.status != 'ARCHIVED' AND p."archivedAt" IS NULL
-        GROUP BY p.id, p.name, p."radarQuery", o.region, p.currency, p.rubro, pr."outputUnit"
+        GROUP BY p.id, p.name, p."radarQuery", p.attributes, pc."searchQueryTemplate",
+                 o.region, p.currency, p.rubro, pr."outputUnit"
         ORDER BY MAX(mp."capturedAt") ASC NULLS FIRST
         LIMIT ${limit}`,
     );
-    return rows;
+    return rows.map((r) => ({
+      productId: r.productId,
+      query: resolveScrapeQuery({
+        radarQuery: r.radarQuery,
+        name: r.name,
+        categoryTemplate: r.categoryTemplate,
+        attributes: (r.attributes ?? {}) as Record<string, unknown>,
+      }),
+      region: r.region,
+      currency: r.currency,
+      rubro: r.rubro,
+      baseUnit: r.baseUnit,
+    }));
   }
 
   /** Radar para un producto: mercado + tu precio + posición. */
@@ -228,6 +247,7 @@ export class MarketRadarService {
         include: {
           organization: { select: { region: true } },
           recipes: { where: { isActive: true }, take: 1, select: { outputUnit: true } },
+          category: { select: { searchQueryTemplate: true } },
         },
       }),
     );
@@ -236,7 +256,12 @@ export class MarketRadarService {
     const body = {
       scope: 'FINAL_PRODUCT',
       productId: product.id,
-      query: product.radarQuery ?? product.name,
+      query: resolveScrapeQuery({
+        radarQuery: product.radarQuery,
+        name: product.name,
+        categoryTemplate: product.category?.searchQueryTemplate ?? null,
+        attributes: product.attributes as Record<string, unknown>,
+      }),
       region: product.organization.region,
       currency: product.currency,
       rubro: product.rubro,

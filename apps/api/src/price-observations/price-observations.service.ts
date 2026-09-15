@@ -9,6 +9,7 @@ import type { Prisma } from '@fijaprecio/db';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AppConfigService } from '../config/app-config.service.js';
 import { QueueService } from '../queue/queue.service.js';
+import { resolveScrapeQuery } from '../common/query-template.js';
 import type { ScrapeTarget } from './dto.js';
 
 const tupleKey = (t: ConsensusRecalcJob): string =>
@@ -138,10 +139,18 @@ export class PriceObservationsService {
     // raw + JOIN a OrgInput (tabla de tenant) → asSystem para saltar RLS.
     const rows = await this.prisma.asSystem((tx) =>
       tx.$queryRaw<
-        Array<{ canonicalInputId: string; query: string; baseUnit: string; rubro: string | null }>
+        Array<{
+          canonicalInputId: string;
+          name: string;
+          radarQuery: string | null;
+          categoryTemplate: string | null;
+          attributes: Prisma.JsonValue;
+          baseUnit: string;
+          rubro: string | null;
+        }>
       >`
-        SELECT ci.id AS "canonicalInputId",
-               COALESCE(ci."radarQuery", ci.name) AS query,
+        SELECT ci.id AS "canonicalInputId", ci.name AS name, ci."radarQuery" AS "radarQuery",
+               cat."searchQueryTemplate" AS "categoryTemplate", ci.attributes AS attributes,
                ci."baseUnit" AS "baseUnit", cat.rubro AS rubro
         FROM "CanonicalInput" ci
         JOIN "OrgInput" oi
@@ -150,11 +159,22 @@ export class PriceObservationsService {
           ON pc."canonicalInputId" = ci.id AND pc.scope = 'INPUT'
         LEFT JOIN "InputCategory" cat ON cat.id = ci."categoryId"
         WHERE ci.status IN ('ACTIVE', 'PENDING_REVIEW')
-        GROUP BY ci.id, ci.name, ci."radarQuery", ci."baseUnit", cat.rubro
+        GROUP BY ci.id, ci.name, ci."radarQuery", ci.attributes, ci."baseUnit",
+                 cat.rubro, cat."searchQueryTemplate"
         ORDER BY MIN(pc."updatedAt") ASC NULLS FIRST
         LIMIT ${limit}`,
     );
-    return rows;
+    return rows.map((r) => ({
+      canonicalInputId: r.canonicalInputId,
+      query: resolveScrapeQuery({
+        radarQuery: r.radarQuery,
+        name: r.name,
+        categoryTemplate: r.categoryTemplate,
+        attributes: (r.attributes ?? {}) as Record<string, unknown>,
+      }),
+      baseUnit: r.baseUnit,
+      rubro: r.rubro,
+    }));
   }
 
   // ---------------------------------------------------------------------------

@@ -432,6 +432,90 @@ async function seedCategories() {
   }
 }
 
+// --- 6b. Categorías de producto final (piloto: Panadería > Pan) ----------
+//
+// Prueba de concepto del "diferencial" del producto: en vez de raspar por el
+// nombre libre del producto ("Pan", que matchea de todo), la categoría trae
+// una plantilla de búsqueda + los atributos que hay que pedirle al usuario
+// para armarla ("pan {tipoHarina} {peso}{pesoUnidad}" → "pan integral 500g").
+// Se arranca con un solo rubro/categoría a propósito — ver conversación sobre
+// el roadmap de especificaciones por producto.
+
+async function seedProductCategories() {
+  const panaderia = await prisma.productCategory.upsert({
+    where: { slug: 'panaderia' },
+    update: { rubro: 'gastronomia' },
+    create: { name: 'Panadería', slug: 'panaderia', rubro: 'gastronomia' },
+  });
+
+  const pan = await prisma.productCategory.upsert({
+    where: { slug: 'pan' },
+    update: {
+      parentId: panaderia.id,
+      rubro: 'gastronomia',
+      searchQueryTemplate: 'pan {tipoHarina} {peso}{pesoUnidad}',
+    },
+    create: {
+      name: 'Pan',
+      slug: 'pan',
+      parentId: panaderia.id,
+      rubro: 'gastronomia',
+      searchQueryTemplate: 'pan {tipoHarina} {peso}{pesoUnidad}',
+    },
+  });
+
+  const attrs: Array<{
+    key: string;
+    label: string;
+    valueType: 'TEXT' | 'NUMBER' | 'NUMBER_WITH_UNIT' | 'ENUM' | 'BOOLEAN';
+    options?: string[];
+    required: boolean;
+    sortOrder: number;
+    helpText?: string;
+  }> = [
+    {
+      key: 'tipoHarina',
+      label: 'Tipo de harina',
+      valueType: 'ENUM',
+      options: ['trigo', 'integral', 'centeno', 'sin gluten'],
+      required: true,
+      sortOrder: 0,
+      helpText: 'De qué harina es el pan — es lo que más cambia el precio de mercado.',
+    },
+    {
+      key: 'peso',
+      label: 'Peso o presentación',
+      valueType: 'NUMBER',
+      required: true,
+      sortOrder: 1,
+      helpText: 'Cuánto pesa (o cuántas unidades trae) la presentación que vendes.',
+    },
+    {
+      key: 'pesoUnidad',
+      label: 'Unidad',
+      valueType: 'ENUM',
+      options: ['g', 'kg', 'unidad'],
+      required: true,
+      sortOrder: 2,
+    },
+  ];
+
+  for (const a of attrs) {
+    await prisma.productCategoryAttribute.upsert({
+      where: { categoryId_key: { categoryId: pan.id, key: a.key } },
+      update: {
+        label: a.label,
+        valueType: a.valueType,
+        options: a.options,
+        required: a.required,
+        sortOrder: a.sortOrder,
+        helpText: a.helpText,
+      },
+      create: { categoryId: pan.id, ...a },
+    });
+  }
+}
+
 // --- 7. Plantillas de notificación ---------------------------------------
 
 async function seedNotificationTemplates() {
@@ -498,6 +582,7 @@ async function main() {
   await seedScrapingSources();
   await seedGovDataSources();
   await seedCategories();
+  await seedProductCategories();
   await seedNotificationTemplates();
   await seedFeatureFlags();
   console.log('✔ seed completado');

@@ -347,16 +347,92 @@ model InputCategory {
   slug      String   @unique
   parentId  String?  @db.Uuid
   rubro     String? // confeccion | gastronomia | muebles | ...
-  createdAt DateTime @default(now())
+  // Plantilla para armar la query de scraping a partir de `CanonicalInput.attributes`
+  // ("{tipoHarina} harina {peso}{pesoUnidad}"). Null => se usa radarQuery/name tal cual.
+  searchQueryTemplate String?
+  createdAt           DateTime @default(now())
 
   parent   InputCategory?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children InputCategory[] @relation("CategoryTree")
 
   canonicalInputs       CanonicalInput[]
   marketplacePlacements MarketplacePlacement[]
+  attributeDefs         InputCategoryAttribute[]
 
   @@index([parentId])
   @@index([rubro])
+}
+
+/// Qué atributo pedirle al usuario para un insumo de esta categoría (ej. bajo
+/// "Harinas": peso, tipo de harina) — arma la búsqueda de scraping precisa en
+/// vez de depender solo del nombre libre. Ver `searchQueryTemplate`.
+model InputCategoryAttribute {
+  id         String            @id @default(uuid(7)) @db.Uuid
+  categoryId String            @db.Uuid
+  key        String // clave estable usada en `attributes` y en la plantilla ("pesoUnidad")
+  label      String // lo que ve el usuario ("Peso o presentación")
+  valueType  AttributeValueType
+  unit       String? // solo NUMBER_WITH_UNIT ("g", "kg", "cm"...)
+  options    Json? // solo ENUM: string[] de opciones válidas
+  required   Boolean           @default(false)
+  helpText   String?
+  sortOrder  Int               @default(0)
+  createdAt  DateTime          @default(now())
+
+  category InputCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, key])
+  @@index([categoryId])
+}
+
+/// Árbol de categorías de PRODUCTO FINAL (rubro → categoría → subcategoría →
+/// tipo). Deliberadamente separado de `InputCategory` por ahora — se evalúa
+/// unificarlos más adelante si conviene.
+model ProductCategory {
+  id                  String   @id @default(uuid(7)) @db.Uuid
+  name                String
+  slug                String   @unique
+  parentId            String?  @db.Uuid
+  rubro               String?
+  searchQueryTemplate String?
+  createdAt           DateTime @default(now())
+
+  parent   ProductCategory?  @relation("ProductCategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children ProductCategory[] @relation("ProductCategoryTree")
+
+  products      Product[]
+  attributeDefs ProductCategoryAttribute[]
+
+  @@index([parentId])
+  @@index([rubro])
+}
+
+/// Igual que `InputCategoryAttribute` pero para el árbol de productos finales.
+model ProductCategoryAttribute {
+  id         String             @id @default(uuid(7)) @db.Uuid
+  categoryId String             @db.Uuid
+  key        String
+  label      String
+  valueType  AttributeValueType
+  unit       String?
+  options    Json?
+  required   Boolean            @default(false)
+  helpText   String?
+  sortOrder  Int                @default(0)
+  createdAt  DateTime           @default(now())
+
+  category ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, key])
+  @@index([categoryId])
+}
+
+enum AttributeValueType {
+  TEXT
+  NUMBER
+  NUMBER_WITH_UNIT
+  ENUM
+  BOOLEAN
 }
 
 /// Insumo estandarizado GLOBAL. La base colaborativa gira en torno a esto.
@@ -548,10 +624,16 @@ model Product {
   name            String
   slug            String?
   rubro           String?
+  categoryId      String?       @db.Uuid // tipo de producto (árbol ProductCategory)
+  // Valores de los atributos definidos por `ProductCategory.attributeDefs`
+  // ({ peso: 500, pesoUnidad: "g", tipoHarina: "integral" }). Junto con
+  // `ProductCategory.searchQueryTemplate` arma la query de scraping precisa
+  // cuando `radarQuery` no está seteado a mano.
+  attributes      Json          @default("{}")
   description     String?
   // Término de búsqueda curado para el radar de mercado (scope=FINAL_PRODUCT).
-  // Si es null, el radar usa `name` — útil cuando el nombre del producto es
-  // demasiado genérico ("Pan") para una búsqueda de mercado específica.
+  // Si es null, el radar usa la plantilla de la categoría (si hay) o `name` —
+  // útil cuando el nombre del producto es demasiado genérico ("Pan").
   radarQuery      String?
   targetMarginPct Decimal?      @db.Decimal(6, 4) // meta de margen (fracción)
   targetPrice     Decimal?      @db.Decimal(14, 4) // precio de mercado objetivo
@@ -562,7 +644,8 @@ model Product {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   recipes          ProductRecipe[]
   costingSnapshots CostingSnapshot[]
@@ -573,6 +656,7 @@ model Product {
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@index([organizationId, status])
+  @@index([categoryId])
 }
 
 /// Ficha técnica versionada. Solo una `isActive` por producto.

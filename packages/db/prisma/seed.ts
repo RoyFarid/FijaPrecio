@@ -432,77 +432,61 @@ async function seedCategories() {
   }
 }
 
-// --- 6b. Categorías de producto final (piloto: Panadería > Pan) ----------
+// --- 6b. Categorías de producto final (piloto: rubros más fáciles) -------
 //
 // Prueba de concepto del "diferencial" del producto: en vez de raspar por el
 // nombre libre del producto ("Pan", que matchea de todo), la categoría trae
 // una plantilla de búsqueda + los atributos que hay que pedirle al usuario
 // para armarla ("pan {tipoHarina} {peso}{pesoUnidad}" → "pan integral 500g").
-// Se arranca con un solo rubro/categoría a propósito — ver conversación sobre
-// el roadmap de especificaciones por producto.
+// Se arranca con dos rubros a propósito (uno por cada evidencia real que ya
+// tenemos de esta sesión) para confirmar que el mecanismo generaliza y no
+// quedó sobreajustado al caso de Pan — ver conversación sobre el roadmap.
 
-async function seedProductCategories() {
-  const panaderia = await prisma.productCategory.upsert({
-    where: { slug: 'panaderia' },
-    update: { rubro: 'gastronomia' },
-    create: { name: 'Panadería', slug: 'panaderia', rubro: 'gastronomia' },
+interface AttributeDefSeed {
+  key: string;
+  label: string;
+  valueType: 'TEXT' | 'NUMBER' | 'NUMBER_WITH_UNIT' | 'ENUM' | 'BOOLEAN';
+  options?: string[];
+  required: boolean;
+  sortOrder: number;
+  helpText?: string;
+}
+
+/** Crea/actualiza rootName > leafName (con su plantilla) + sus atributos. */
+async function upsertProductCategoryTree(args: {
+  rootName: string;
+  rootSlug: string;
+  leafName: string;
+  leafSlug: string;
+  rubro: string;
+  searchQueryTemplate: string;
+  attrs: AttributeDefSeed[];
+}) {
+  const root = await prisma.productCategory.upsert({
+    where: { slug: args.rootSlug },
+    update: { rubro: args.rubro },
+    create: { name: args.rootName, slug: args.rootSlug, rubro: args.rubro },
   });
 
-  const pan = await prisma.productCategory.upsert({
-    where: { slug: 'pan' },
+  const leaf = await prisma.productCategory.upsert({
+    where: { slug: args.leafSlug },
     update: {
-      parentId: panaderia.id,
-      rubro: 'gastronomia',
-      searchQueryTemplate: 'pan {tipoHarina} {peso}{pesoUnidad}',
+      parentId: root.id,
+      rubro: args.rubro,
+      searchQueryTemplate: args.searchQueryTemplate,
     },
     create: {
-      name: 'Pan',
-      slug: 'pan',
-      parentId: panaderia.id,
-      rubro: 'gastronomia',
-      searchQueryTemplate: 'pan {tipoHarina} {peso}{pesoUnidad}',
+      name: args.leafName,
+      slug: args.leafSlug,
+      parentId: root.id,
+      rubro: args.rubro,
+      searchQueryTemplate: args.searchQueryTemplate,
     },
   });
 
-  const attrs: Array<{
-    key: string;
-    label: string;
-    valueType: 'TEXT' | 'NUMBER' | 'NUMBER_WITH_UNIT' | 'ENUM' | 'BOOLEAN';
-    options?: string[];
-    required: boolean;
-    sortOrder: number;
-    helpText?: string;
-  }> = [
-    {
-      key: 'tipoHarina',
-      label: 'Tipo de harina',
-      valueType: 'ENUM',
-      options: ['trigo', 'integral', 'centeno', 'sin gluten'],
-      required: true,
-      sortOrder: 0,
-      helpText: 'De qué harina es el pan — es lo que más cambia el precio de mercado.',
-    },
-    {
-      key: 'peso',
-      label: 'Peso o presentación',
-      valueType: 'NUMBER',
-      required: true,
-      sortOrder: 1,
-      helpText: 'Cuánto pesa (o cuántas unidades trae) la presentación que vendes.',
-    },
-    {
-      key: 'pesoUnidad',
-      label: 'Unidad',
-      valueType: 'ENUM',
-      options: ['g', 'kg', 'unidad'],
-      required: true,
-      sortOrder: 2,
-    },
-  ];
-
-  for (const a of attrs) {
+  for (const a of args.attrs) {
     await prisma.productCategoryAttribute.upsert({
-      where: { categoryId_key: { categoryId: pan.id, key: a.key } },
+      where: { categoryId_key: { categoryId: leaf.id, key: a.key } },
       update: {
         label: a.label,
         valueType: a.valueType,
@@ -511,9 +495,86 @@ async function seedProductCategories() {
         sortOrder: a.sortOrder,
         helpText: a.helpText,
       },
-      create: { categoryId: pan.id, ...a },
+      create: { categoryId: leaf.id, ...a },
     });
   }
+
+  return leaf;
+}
+
+async function seedProductCategories() {
+  await upsertProductCategoryTree({
+    rootName: 'Panadería',
+    rootSlug: 'panaderia',
+    leafName: 'Pan',
+    leafSlug: 'pan',
+    rubro: 'gastronomia',
+    searchQueryTemplate: 'pan {tipoHarina} {peso}{pesoUnidad}',
+    attrs: [
+      {
+        key: 'tipoHarina',
+        label: 'Tipo de harina',
+        valueType: 'ENUM',
+        options: ['trigo', 'integral', 'centeno', 'sin gluten'],
+        required: true,
+        sortOrder: 0,
+        helpText: 'De qué harina es el pan — es lo que más cambia el precio de mercado.',
+      },
+      {
+        key: 'peso',
+        label: 'Peso o presentación',
+        valueType: 'NUMBER',
+        required: true,
+        sortOrder: 1,
+        helpText: 'Cuánto pesa (o cuántas unidades trae) la presentación que vendes.',
+      },
+      {
+        key: 'pesoUnidad',
+        label: 'Unidad',
+        valueType: 'ENUM',
+        options: ['g', 'kg', 'unidad'],
+        required: true,
+        sortOrder: 2,
+      },
+    ],
+  });
+
+  await upsertProductCategoryTree({
+    rootName: 'Muebles',
+    rootSlug: 'muebles-raiz',
+    leafName: 'Repisa de melamina',
+    leafSlug: 'repisa-melamina',
+    rubro: 'muebles',
+    searchQueryTemplate: 'repisa flotante melamina {color} {largoCm}cm',
+    attrs: [
+      {
+        key: 'color',
+        label: 'Color / acabado',
+        valueType: 'ENUM',
+        options: ['blanco', 'wengue', 'roble', 'negro'],
+        required: true,
+        sortOrder: 0,
+        helpText: 'El acabado de la melamina cambia bastante el precio de mercado.',
+      },
+      {
+        key: 'largoCm',
+        label: 'Largo (cm)',
+        valueType: 'NUMBER',
+        required: true,
+        sortOrder: 1,
+        helpText: 'Cuánto mide de largo la repisa que vendes.',
+      },
+      {
+        key: 'espesorMm',
+        label: 'Espesor',
+        valueType: 'ENUM',
+        options: ['18', '25'],
+        required: false,
+        sortOrder: 2,
+        helpText: 'Grosor de la plancha de melamina, en milímetros.',
+      },
+    ],
+  });
 }
 
 // --- 7. Plantillas de notificación ---------------------------------------

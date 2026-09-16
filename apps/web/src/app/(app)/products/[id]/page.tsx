@@ -8,6 +8,7 @@ import { QueryBoundary } from '../../../../components/query-boundary';
 import { Callout } from '../../../../components/ui/callout';
 import { Tabs } from '../../../../components/ui/tabs';
 import { StatusBadge } from '../../../../components/products/status-badge';
+import { ProductCategorySummary } from '../../../../components/products/product-category-summary';
 import { CostBreakdown } from '../../../../components/costing/cost-breakdown';
 import { SensitivityPanel } from '../../../../components/costing/sensitivity-panel';
 import { RadarPanel } from '../../../../components/radar/radar-panel';
@@ -70,6 +71,11 @@ export default function ProductDetailPage() {
                     })
                   : (product.data.rubro ?? undefined)
               }
+            />
+
+            <ProductCategorySummary
+              categoryId={product.data.categoryId}
+              attributes={product.data.attributes}
             />
 
             {!product.data.recipe ? (
